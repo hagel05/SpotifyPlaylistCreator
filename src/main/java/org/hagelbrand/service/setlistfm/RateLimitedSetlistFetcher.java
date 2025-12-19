@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 @Service
 public class RateLimitedSetlistFetcher {
 
+    // TODO determine if I want to use this or trash it
     private final SetlistFmService setlistFmService;
 
     // Daily quota and per-second limits

@@ -26,7 +26,6 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(withDefaults());
-
         return http.build();
     }
 }

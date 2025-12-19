@@ -1,6 +1,9 @@
 package org.hagelbrand.service.spotify;
 
+import org.hagelbrand.controller.PlaylistController;
 import org.hagelbrand.data.SpotifySearchResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
@@ -14,6 +17,8 @@ public class SpotifyServiceImpl {
 
     private final WebClient webClient;
     private final OAuth2AuthorizedClientService authorizedClientService;
+    private static final Logger log = LoggerFactory.getLogger(SpotifyServiceImpl.class);
+
 
     public SpotifyServiceImpl(WebClient webClient,
                               OAuth2AuthorizedClientService authorizedClientService) {
@@ -22,6 +27,7 @@ public class SpotifyServiceImpl {
     }
 
     public SpotifySearchResponse searchTrack(String artist, String track) {
+        log.info("Searching for track {} by {}", track, artist);
         String q = String.format("track:%s artist:%s", track, artist);
 
         // Get currently authenticated user

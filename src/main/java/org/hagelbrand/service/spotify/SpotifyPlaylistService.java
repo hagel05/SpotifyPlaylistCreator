@@ -1,6 +1,9 @@
 package org.hagelbrand.service.spotify;
 
+import org.hagelbrand.controller.PlaylistController;
 import org.hagelbrand.data.CreatePlaylistRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.stereotype.Service;
@@ -19,12 +22,16 @@ public class SpotifyPlaylistService {
     public SpotifyPlaylistService(WebClient spotifyWebClient) {
         this.spotifyClient = spotifyWebClient;
     }
+    private static final Logger log = LoggerFactory.getLogger(SpotifyPlaylistService.class);
 
+
+    // TODO: Check to see if we can add tracks upon initial creation
     public String createPlaylist(
             OAuth2AuthorizedClient client,
             String userId,
             String artist
     ) {
+        log.info("Creating spotify playlist for user {} and artist {}", userId, artist);
         return spotifyClient.post()
                 .uri("/users/{userId}/playlists", userId)
                 .headers(h ->
@@ -40,6 +47,7 @@ public class SpotifyPlaylistService {
                 .block();
     }
 
+    // TODO: improve this, it looks like many API calls
     public void addTracks(
             OAuth2AuthorizedClient client,
             String playlistId,
@@ -48,6 +56,8 @@ public class SpotifyPlaylistService {
         List<String> uris = trackIds.stream()
                 .map(id -> "spotify:track:" + id)
                 .toList();
+
+        log.info("Adding {} tracks to playlist {}", trackIds.size(), playlistId);
 
         spotifyClient.post()
                 .uri("/playlists/{playlistId}/tracks", playlistId)
