@@ -2,13 +2,21 @@ package org.hagelbrand.service.spotify;
 
 import org.hagelbrand.data.SpotifySearchResponse;
 import org.hagelbrand.data.TrackResolution;
+import org.hagelbrand.service.setlistfm.SetlistFmServiceImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.text.Normalizer;
-import java.util.Optional;
+import java.util.Comparator;
+import java.util.List;
 
 @Service
 public class SpotifyTrackResolver {
+
+    private static final Logger log = LoggerFactory.getLogger(SpotifyTrackResolver.class);
+
+    private static final int MIN_CONFIDENCE = 30;
 
     private final SpotifyServiceImpl spotifyService;
 
@@ -16,75 +24,101 @@ public class SpotifyTrackResolver {
         this.spotifyService = spotifyService;
     }
 
-    public TrackResolution resolveTrackId(String artist, String track) {
-        SpotifySearchResponse response = spotifyService.searchTrack(artist, track);
+    public TrackResolution resolve(String artist, String track) {
+        SpotifySearchResponse response =
+                spotifyService.searchTrack(artist, track);
 
         if (response == null ||
                 response.tracks() == null ||
                 response.tracks().items().isEmpty()) {
-            return new TrackResolution(track, artist,false, null, null, 0, "NO_RESULTS");
+
+            return new TrackResolution(
+                    track, artist, false,
+                    null, null,
+                    0, "NO_RESULTS"
+            );
         }
 
-        var bestMatch = response.tracks().items().stream()
-                .map(item -> {
-                    int score = 0;
-                    String reason = "";
+        log.debug("Track search returned response: {}", response.toString());
 
-                    if (exactMatch(track, item.name())) {
-                        score += 50;
-                        reason += "EXACT_TRACK_MATCH;";
-                    } else if (normalize(item.name()).contains(normalize(track))) {
-                        score += 20;
-                        reason += "PARTIAL_TRACK_MATCH;";
-                    }
+        String expected = normalize(track);
 
-                    if (normalize(item.album().name()).contains(normalize(track))) {
-                        score += 10;
-                        reason += "ALBUM_MATCH;";
-                    }
+        List<TrackResolution> candidates =
+                response.tracks().items().stream()
+                        .map(item -> scoreCandidate(expected, artist, track, item))
+                        .sorted(Comparator.comparingInt(TrackResolution::confidence).reversed())
+                        .toList();
 
-                    // Popularity contribution (0–10)
-                    int popularityScore = Math.min(item.popularity() / 10, 10);
-                    score += popularityScore;
-                    reason += "POPULARITY:" + popularityScore;
+        TrackResolution best = candidates.getFirst();
 
-                    return new TrackResolution(
-                            track,
-                            artist,
-                            true,
-                            item.id(),
-                            item.name(),
-                            score,
-                            reason
-                    );
-                })
-                .max((a, b) -> Integer.compare(a.confidence(), b.confidence()))
-                .get();
-
-        SpotifySearchResponse.Item item = response.tracks().items().getFirst();
-
-        if (bestMatch.confidence() < 30) {
-            return new TrackResolution(track, artist, false, null, null, bestMatch.confidence(), "LOW_CONFIDENCE");
+        if (best.confidence() < MIN_CONFIDENCE) {
+            return new TrackResolution(
+                    track, artist, false,
+                    null, null,
+                    best.confidence(),
+                    "LOW_CONFIDENCE"
+            );
         }
 
-        return bestMatch;
+        return best;
     }
+
+    private TrackResolution scoreCandidate(
+            String expectedNormalized,
+            String artist,
+            String originalTrack,
+            SpotifySearchResponse.Item item
+    ) {
+        int score = 0;
+        StringBuilder reason = new StringBuilder();
+
+        String candidateTrack = normalize(item.name());
+        String candidateAlbum =
+                item.album() != null ? normalize(item.album().name()) : "";
+
+        if (candidateTrack.equals(expectedNormalized)) {
+            score += 50;
+            reason.append("EXACT_TRACK;");
+        }
+        else if (candidateTrack.contains(expectedNormalized) ||
+                expectedNormalized.contains(candidateTrack)) {
+            score += 30;
+            reason.append("PARTIAL_TRACK;");
+        }
+
+        if (!candidateAlbum.isEmpty() &&
+                candidateAlbum.contains(expectedNormalized)) {
+            score += 10;
+            reason.append("ALBUM_MATCH;");
+        }
+
+        int popularityScore = Math.min(item.popularity() / 10, 10);
+        score += popularityScore;
+        reason.append("POPULARITY=").append(popularityScore);
+
+        return new TrackResolution(
+                originalTrack,
+                artist,
+                true,
+                item.id(),
+                item.name(),
+                score,
+                reason.toString()
+        );
+    }
+
 
     private String normalize(String value) {
-        String normalized = Normalizer.normalize(value, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", ""); // remove accents
-        normalized = normalized.toLowerCase()
-                .replaceAll("&", "and")
-                .replaceAll("\\(.*?\\)", "")
-                .replaceAll("[^a-z0-9 ]", "")
-                .replaceAll("\\s+", " ")
+        if (value == null) return "";
+
+        String normalized =
+                Normalizer.normalize(value, Normalizer.Form.NFD)
+                        .replaceAll("\\p{M}", ""); // remove accents
+
+        return normalized.toLowerCase()
+                .replace("&", "and")               // & → and
+                .replaceAll("[^a-z0-9 ]", "")      // remove punctuation
+                .replaceAll("\\s+", " ")           // collapse whitespace
                 .trim();
-        return normalized;
     }
-
-
-    private boolean exactMatch(String expected, String actual) {
-        return normalize(expected).equals(normalize(actual));
-    }
-
 }

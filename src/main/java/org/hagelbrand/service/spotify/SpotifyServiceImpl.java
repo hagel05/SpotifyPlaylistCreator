@@ -48,7 +48,7 @@ public class SpotifyServiceImpl {
                         .path("/search")
                         .queryParam("q", q)
                         .queryParam("type", "track")
-                        .queryParam("limit", 1)
+                        .queryParam("limit", 5)
                         .build())
                 .headers(headers -> headers.setBearerAuth(accessToken))
                 .retrieve()

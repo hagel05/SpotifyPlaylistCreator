@@ -17,15 +17,11 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/api/**",
-                                "/login",
-                                "/error",
-                                "/oauth2/authorization/**"
-                        ).permitAll()
+                        .requestMatchers("/login", "/error", "/api/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                .oauth2Login(withDefaults());
+                .oauth2Login(withDefaults())
+                .oauth2Client(withDefaults());
         return http.build();
     }
 }

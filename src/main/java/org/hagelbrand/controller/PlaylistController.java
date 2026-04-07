@@ -9,6 +9,7 @@ import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.annotation.RegisteredOAuth2AuthorizedClient;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -35,11 +36,23 @@ public class PlaylistController {
             @RegisteredOAuth2AuthorizedClient("spotify") OAuth2AuthorizedClient spotifyClient
     ) {
         log.info("Creating playlist for artist {}", artist);
-        List<TrackCount> tracks = artistSetlistPredictorService.getTopTracksForArtist(artist, limit);
+        List<TrackCount> tracks = artistSetlistPredictorService.getTopTracksForArtist(artist, limit)
+                .stream()
+                .sorted(Comparator.comparingLong(TrackCount::plays))
+                .toList();
+
         log.info("Top tracks for artist {} are {}", artist, tracks);
         String playlistId = spotifyPlaylistOrchestrator.buildPlaylist(spotifyClient, artist, tracks);
 
         // TODO: Make this an object and include the setlistFM tracks as well as info about what we added to spotify
+        // TODO: This should return an error not an empty playlist
+        if (playlistId == null || playlistId.isEmpty()) {
+            return Map.of(
+                    "playlistId", "unknown",
+                    "url", "https://open.spotify.com/playlist/unknown"
+            );
+        }
+
         return Map.of(
                 "playlistId", playlistId,
                 "url", "https://open.spotify.com/playlist/" + playlistId

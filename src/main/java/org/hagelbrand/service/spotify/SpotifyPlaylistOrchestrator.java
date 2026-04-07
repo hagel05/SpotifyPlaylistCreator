@@ -39,7 +39,7 @@ public class SpotifyPlaylistOrchestrator {
         log.info("Creating playlist for user {}", userId);
 
         List<TrackResolution> resolutions = tracks.stream()
-                .map(tc -> resolver.resolveTrackId(artist, tc.track()))
+                .map(tc -> resolver.resolve(artist, tc.track()))
                 .toList();
 
         log.info("Setlist.fm → Spotify resolution for '{}':", artist);
