@@ -16,12 +16,14 @@ import java.util.Map;
 public class ArtistSetlistPredictorService {
     private final SetlistFmService setlistFmService;
     private final SetlistTrackService trackService;
+    private final ArtistSearchFilterService artistSearchFilterService;
     private static final Logger log = LoggerFactory.getLogger(ArtistSetlistPredictorService.class);
 
 
-    public ArtistSetlistPredictorService(SetlistFmService setlistFmService, SetlistTrackService trackService) {
+    public ArtistSetlistPredictorService(SetlistFmService setlistFmService, SetlistTrackService trackService, ArtistSearchFilterService artistSearchFilterService) {
         this.setlistFmService = setlistFmService;
         this.trackService = trackService;
+        this.artistSearchFilterService = artistSearchFilterService;
     }
 
 
@@ -34,7 +36,7 @@ public class ArtistSetlistPredictorService {
                 setlistFmService.getArtistsFromSearch(artistQuery);
 
         Artist artist =
-                ArtistSearchFilterService.selectBest(artistQuery, artists);
+                artistSearchFilterService.selectBest(artistQuery, artists);
 
         log.info("Getting setlists for artist {} using mbid {}", artist.name(), artist.mbid());
         List<Setlist> setlists =

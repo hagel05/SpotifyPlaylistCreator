@@ -1,4 +1,3 @@
-rootProject.name = "ConcertPlaylistBuilder"
+rootProject.name = "concert-playlist-builder"
 
-
-include("src:main:test")
+include("backend")
