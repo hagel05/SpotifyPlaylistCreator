@@ -37,6 +37,19 @@ class SecurityConfigTest {
     }
 
     @Test
+    void oauth2CodeEndpointsAreAccessibleWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/login/oauth2/code/spotify"))
+                .andExpect(status().is3xxRedirection());
+        // Redirect is expected since we're not actually completing OAuth2 flow
+    }
+
+    @Test
+    void authCheckEndpointIsAccessibleWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/api/auth/check"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void nonApiEndpointsRequireAuthentication() throws Exception {
         mockMvc.perform(get("/private"))
                 .andExpect(status().is3xxRedirection());
@@ -47,5 +60,12 @@ class SecurityConfigTest {
     void authenticatedUserCanAccessProtectedEndpoints() throws Exception {
         mockMvc.perform(get("/private"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void spotifyMeEndpointRequiresOAuth2Authentication() throws Exception {
+        mockMvc.perform(get("/api/spotify/me"))
+                .andExpect(status().is3xxRedirection());
+        // Requires OAuth2, so redirects to login
     }
 }
