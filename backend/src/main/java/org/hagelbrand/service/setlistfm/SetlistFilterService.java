@@ -27,7 +27,6 @@ public class SetlistFilterService {
     }
 
     private boolean isTvOrPromo(Setlist setlist) {
-        log.info("Filtering out live or promotional appearances");
         String venueName = lower(setlist.venue().name());
         String info = lower(setlist.info());
         String venueUrl = lower(setlist.venue().url());
@@ -38,7 +37,13 @@ public class SetlistFilterService {
     }
 
     private boolean containsAny(String value) {
-        return TV_KEYWORDS.stream().anyMatch(value::contains);
+        // Short-circuit on first match instead of streaming through all keywords
+        for (String keyword : TV_KEYWORDS) {
+            if (value.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String lower(String value) {

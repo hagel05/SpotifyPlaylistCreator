@@ -21,46 +21,39 @@ public class ArtistSearchFilterService {
     }
 
     public Artist selectBest(String query, ArtistSearchResponse response) {
+        int bestScore = 0;
+        var topCandidates = new java.util.ArrayList<Artist>();
 
-        var scored = response.artists().stream()
-                .map(a -> new ScoredArtist(a, score(a, query)))
-                .toList();
+        for (Artist artist : response.artists()) {
+            int score = score(artist, query);
 
-        int bestScore = scored.stream()
-                .mapToInt(ScoredArtist::score)
-                .max()
-                .orElseThrow();
+            if (score > bestScore) {
+                bestScore = score;
+                topCandidates.clear();
+                topCandidates.add(artist);
+            } else if (score >= bestScore - 5) {
+                topCandidates.add(artist);
+            }
+        }
 
         // If best score is weak, fail early
         if (bestScore < CONFIDENCE_THRESHOLD) {
             throw new IllegalStateException("No confident match for: " + query);
         }
 
-        // Get all near-top candidates (tied or nearly tied)
-        var topCandidates = scored.stream()
-                .filter(s -> isNearTie(s.score(), bestScore))
-                .map(ScoredArtist::artist)
-                .toList();
-
         if (topCandidates.size() == 1) {
             return topCandidates.get(0);
         }
-
-        // Tie-break using setlist counts ONLY here
+        
         return topCandidates.stream()
                 .max(Comparator.comparingInt(this::getSetlistCount))
                 .orElseThrow();
-    }
-
-    static boolean isNearTie(int score, int best) {
-        return score >= best - 5; // small tolerance window
     }
 
     static record ScoredArtist(Artist artist, int score) {}
 
 
     static int score(Artist a, String query) {
-        log.info("Scoring artists for normalization");
         int score = 0;
 
         if (normalize(a.name()).equals(normalize(query))) score += 100;
@@ -99,6 +92,10 @@ public class ArtistSearchFilterService {
                 || text.contains("plays the music of");
     }
 
+    /**
+     * Fetch the total setlist count for an artist from setlist.fm.
+     * Currently unused in tie-breaking
+     */
     private int getSetlistCount(Artist artist) {
         try {
             return setlistFmService
