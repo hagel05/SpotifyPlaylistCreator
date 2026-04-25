@@ -48,12 +48,16 @@ public class SetlistFmServiceImpl implements SetlistFmService {
 
     @Override
     public List<Setlist> getConcertSetlists(String mbid) {
-        log.info("Filtering out live or promotional appearances using search response");
         SetlistSearchResponse response = getSetlistsFromSearch(mbid);
 
-        return response.setlists().stream()
+        List<Setlist> filteredSetlists = response.setlists().stream()
                 .filter(visibilityFilter::isVisibleConcert)
                 .toList();
+
+        log.info("Filtered {} total setlists to {} visible concerts",
+                response.setlists().size(), filteredSetlists.size());
+
+        return filteredSetlists;
     }
 
     @Override
