@@ -44,7 +44,7 @@ class PlaylistControllerTest {
         List<TrackCount> tracks =
                 List.of(
                         new TrackCount("When I Come Around", 4),
-        new TrackCount("Basket Case", 5)
+                        new TrackCount("Basket Case", 5)
                 );
 
         when(artistSetlistPredictorService.getTopTracksForArtist(artist, limit))
@@ -73,7 +73,97 @@ class PlaylistControllerTest {
                 )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.playlistId").value(playlistId))
-                .andExpect(jsonPath("$.url")
-                        .value("https://open.spotify.com/playlist/" + playlistId));
+                .andExpect(jsonPath("$.playlistUrl")
+                        .value("https://open.spotify.com/playlist/" + playlistId))
+                .andExpect(jsonPath("$.artist").value(artist))
+                .andExpect(jsonPath("$.tracksAdded").value(tracks.size()))
+                .andExpect(jsonPath("$.topTracks").isArray())
+                .andExpect(jsonPath("$.topTracks[0].name").exists())
+                .andExpect(jsonPath("$.topTracks[0].confidence").exists())
+                .andExpect(jsonPath("$.createdAt").exists());
+    }
+
+    @Test
+    void createPlaylistResponseIncludesAllRequiredFields() throws Exception {
+        String artist = "The Beatles";
+        int limit = 20;
+        String playlistId = "abc123xyz";
+
+        List<TrackCount> tracks = List.of(
+                new TrackCount("Yesterday", 150),
+                new TrackCount("Hey Jude", 120),
+                new TrackCount("Let It Be", 100)
+        );
+
+        when(artistSetlistPredictorService.getTopTracksForArtist(artist, limit))
+                .thenReturn(tracks);
+
+        when(spotifyPlaylistOrchestrator.buildPlaylist(
+                any(OAuth2AuthorizedClient.class),
+                eq(artist),
+                any()  // Match any list of tracks (sorted)
+        )).thenReturn(playlistId);
+
+        mockMvc.perform(
+                        get("/api/playlist/{artist}/spotify-playlist", artist)
+                                .param("limit", String.valueOf(limit))
+                                .with(oauth2Login().clientRegistration(
+                                        ClientRegistration.withRegistrationId("spotify")
+                                                .clientId("client-id")
+                                                .clientSecret("client-secret")
+                                                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                                                .redirectUri("http://localhost/login/oauth2/code/spotify")
+                                                .authorizationUri("https://accounts.spotify.com/authorize")
+                                                .tokenUri("https://accounts.spotify.com/api/token")
+                                                .scope("playlist-modify-public")
+                                                .build()
+                                ))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.playlistId").value(playlistId))
+                .andExpect(jsonPath("$.playlistUrl").value("https://open.spotify.com/playlist/" + playlistId))
+                .andExpect(jsonPath("$.artist").value(artist))
+                .andExpect(jsonPath("$.tracksAdded").value(3))
+                .andExpect(jsonPath("$.topTracks").isArray())
+                .andExpect(jsonPath("$.topTracks.length()").value(3))
+                .andExpect(jsonPath("$.createdAt").exists());
+    }
+
+    @Test
+    void createPlaylistWithCustomLimit() throws Exception {
+        String artist = "Pink Floyd";
+        int limit = 50;
+        String playlistId = "custom-limit-playlist";
+
+        List<TrackCount> tracks = List.of(
+                new TrackCount("Wish You Were Here", 200)
+        );
+
+        when(artistSetlistPredictorService.getTopTracksForArtist(artist, limit))
+                .thenReturn(tracks);
+
+        when(spotifyPlaylistOrchestrator.buildPlaylist(
+                any(OAuth2AuthorizedClient.class),
+                eq(artist),
+                eq(tracks)
+        )).thenReturn(playlistId);
+
+        mockMvc.perform(
+                        get("/api/playlist/{artist}/spotify-playlist", artist)
+                                .param("limit", String.valueOf(limit))
+                                .with(oauth2Login().clientRegistration(
+                                        ClientRegistration.withRegistrationId("spotify")
+                                                .clientId("client-id")
+                                                .clientSecret("client-secret")
+                                                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                                                .redirectUri("http://localhost/login/oauth2/code/spotify")
+                                                .authorizationUri("https://accounts.spotify.com/authorize")
+                                                .tokenUri("https://accounts.spotify.com/api/token")
+                                                .scope("playlist-modify-public")
+                                                .build()
+                                ))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tracksAdded").value(1));
     }
 }

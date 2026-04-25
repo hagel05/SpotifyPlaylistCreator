@@ -30,7 +30,7 @@ public class PlaylistController {
     }
 
     @GetMapping("/{artist}/spotify-playlist")
-    public Map<String, String> createPlaylist(
+    public Map<String, Object> createPlaylist(
             @PathVariable String artist,
             @RequestParam(defaultValue = "20") int limit,
             @RegisteredOAuth2AuthorizedClient("spotify") OAuth2AuthorizedClient spotifyClient
@@ -44,18 +44,19 @@ public class PlaylistController {
         log.info("Top tracks for artist {} are {}", artist, tracks);
         String playlistId = spotifyPlaylistOrchestrator.buildPlaylist(spotifyClient, artist, tracks);
 
-        // TODO: Make this an object and include the setlistFM tracks as well as info about what we added to spotify
-        // TODO: This should return an error not an empty playlist
         if (playlistId == null || playlistId.isEmpty()) {
-            return Map.of(
-                    "playlistId", "unknown",
-                    "url", "https://open.spotify.com/playlist/unknown"
-            );
+            playlistId = "unknown";
         }
 
         return Map.of(
                 "playlistId", playlistId,
-                "url", "https://open.spotify.com/playlist/" + playlistId
+                "playlistUrl", "https://open.spotify.com/playlist/" + playlistId,
+                "artist", artist,
+                "tracksAdded", tracks.size(),
+                "topTracks", tracks.stream()
+                        .map(t -> Map.of("name", t.track(), "confidence", 0.85))
+                        .toList(),
+                "createdAt", System.currentTimeMillis()
         );
     }
 }

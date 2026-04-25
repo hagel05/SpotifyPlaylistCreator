@@ -98,7 +98,7 @@ class PlaylistControllerFunctionalTest {
                 )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.playlistId").value(playlistId))
-                .andExpect(jsonPath("$.url").value("https://open.spotify.com/playlist/" + playlistId));
+                .andExpect(jsonPath("$.playlistUrl").value("https://open.spotify.com/playlist/" + playlistId));
     }
 
     @Test
@@ -250,7 +250,7 @@ class PlaylistControllerFunctionalTest {
                                 ))
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.url")
+                .andExpect(jsonPath("$.playlistUrl")
                         .value("https://open.spotify.com/playlist/" + playlistId));
     }
 }

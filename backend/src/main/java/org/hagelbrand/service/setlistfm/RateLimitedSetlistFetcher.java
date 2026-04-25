@@ -2,6 +2,8 @@ package org.hagelbrand.service.setlistfm;
 
 import org.hagelbrand.data.SetlistSearchResponse;
 import org.hagelbrand.data.SetlistSearchResponse.Setlist;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 
@@ -10,6 +12,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class RateLimitedSetlistFetcher {
+
+    private static final Logger log = LoggerFactory.getLogger(RateLimitedSetlistFetcher.class);
 
     // TODO determine if I want to use this or trash it
     private final SetlistFmService setlistFmService;
@@ -32,7 +36,7 @@ public class RateLimitedSetlistFetcher {
         for (Setlist s : setlistsToFetch) {
             // Respect daily limit
             if (requestsToday >= MAX_PER_DAY) {
-                System.out.println("Reached daily limit, stopping requests.");
+                log.info("Reached daily limit of {} requests, stopping requests.", MAX_PER_DAY);
                 break;
             }
 
@@ -46,10 +50,10 @@ public class RateLimitedSetlistFetcher {
                 // Respect 2 requests per second
                 Thread.sleep(500); // 1000ms / 2 req/sec
             } catch (HttpClientErrorException.TooManyRequests e) {
-                System.err.println("429 Too Many Requests for " + s.id() + ", sleeping 1s and retrying...");
+                log.warn("Rate limit hit for setlist {}, sleeping 1s and retrying...", s.id());
                 try { Thread.sleep(1000); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
             } catch (Exception e) {
-                System.err.println("Failed to fetch setlist " + s.id() + ": " + e.getMessage());
+                log.error("Failed to fetch setlist {}", s.id(), e);
             }
         }
 
