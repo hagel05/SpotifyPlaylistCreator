@@ -24,7 +24,6 @@ public class ArtistSearchFilterService {
         int bestScore = 0;
         var topCandidates = new java.util.ArrayList<Artist>();
 
-        // Single pass: score and track top candidates
         for (Artist artist : response.artists()) {
             int score = score(artist, query);
 
@@ -32,7 +31,7 @@ public class ArtistSearchFilterService {
                 bestScore = score;
                 topCandidates.clear();
                 topCandidates.add(artist);
-            } else if (score >= bestScore - 5) {  // isNearTie inline
+            } else if (score >= bestScore - 5) {
                 topCandidates.add(artist);
             }
         }
@@ -45,18 +44,10 @@ public class ArtistSearchFilterService {
         if (topCandidates.size() == 1) {
             return topCandidates.get(0);
         }
-
-        // Tie-break: Use stable fallback (avoid N+1 API calls)
-        // In rare tie scenarios, prefer artist with more disambiguation info or alphabetically first
+        
         return topCandidates.stream()
-                .max(Comparator
-                        .comparingInt((Artist a) -> a.disambiguation().isEmpty() ? 0 : 1)
-                        .thenComparing(Artist::name))
+                .max(Comparator.comparingInt(this::getSetlistCount))
                 .orElseThrow();
-    }
-
-    static boolean isNearTie(int score, int best) {
-        return score >= best - 5; // small tolerance window
     }
 
     static record ScoredArtist(Artist artist, int score) {}
@@ -101,6 +92,10 @@ public class ArtistSearchFilterService {
                 || text.contains("plays the music of");
     }
 
+    /**
+     * Fetch the total setlist count for an artist from setlist.fm.
+     * Currently unused in tie-breaking
+     */
     private int getSetlistCount(Artist artist) {
         try {
             return setlistFmService
