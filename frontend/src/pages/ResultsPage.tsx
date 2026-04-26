@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { spotifyApi, TrackCountResponse } from '../services/api'
+import { spotifyApi } from '../services/api'
 
 export function ResultsPage() {
   const location = useLocation()
@@ -87,7 +87,7 @@ export function ResultsPage() {
           <div className="mb-6">
             <h2 className="text-xl font-bold mb-4">Tracks from Concert Setlists</h2>
             <div className="space-y-2">
-              {topTracks.map((track) => (
+              {topTracks.map((track: { track: string; plays: number }) => (
                 <div key={track.track} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
                   <div className="flex justify-between items-start">
                     <span className="font-medium text-gray-800">{track.track}</span>

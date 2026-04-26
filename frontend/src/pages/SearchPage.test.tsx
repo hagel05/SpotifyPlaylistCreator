@@ -225,7 +225,6 @@ describe('SearchPage', () => {
         data: { authenticated: false },
       } as any)
 
-      const originalLocation = window.location.href
       const locationSpy = vi.spyOn(window, 'location', 'get')
 
       renderSearchPage()

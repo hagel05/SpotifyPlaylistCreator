@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, renderHook } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ReactNode } from 'react'
 
 // Use vi.hoisted to properly hoist mock definitions
 const { mockCheckAuth } = vi.hoisted(() => ({
@@ -195,7 +194,7 @@ describe('AuthContext', () => {
       )
 
       const TestComponent = () => {
-        const { user, isAuthenticated, isLoading } = useAuth()
+        const { isAuthenticated, isLoading } = useAuth()
         return (
           <div>
             {isLoading && <div>Loading</div>}
