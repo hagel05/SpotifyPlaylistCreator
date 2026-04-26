@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import axios from 'axios'
-import { spotifyApi, TrackCountResponse, PlaylistResponse } from './api'
+import { TrackCountResponse, PlaylistResponse } from './api'
 
 // Mock axios
 vi.mock('axios')

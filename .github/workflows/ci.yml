@@ -55,6 +55,10 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+        working-directory: backend
+
       - name: Run backend tests
         run: ./gradlew test --info
         working-directory: backend

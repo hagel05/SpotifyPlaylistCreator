@@ -6,7 +6,7 @@ import { PlaylistResponse } from '../services/api'
 
 // Use vi.hoisted to properly hoist mock definitions
 const { mockNavigate, getMockPlaylistData, setMockPlaylistData } = vi.hoisted(() => {
-  let mockPlaylistData: PlaylistResponse = {
+  let mockPlaylistData: PlaylistResponse | null = {
     playlistId: 'spotify:playlist:123',
     playlistUrl: 'https://open.spotify.com/playlist/123',
     artist: 'The Beatles',
@@ -139,7 +139,7 @@ describe('PlaylistPage', () => {
     it('should handle empty tracks array', () => {
       const current = getMockPlaylistData()
       setMockPlaylistData({
-        ...current,
+        ...(current as PlaylistResponse),
         tracksAdded: 0,
         topTracks: [],
       })
@@ -201,7 +201,7 @@ describe('PlaylistPage', () => {
     it('should round confidence to nearest whole percentage', () => {
       const current = getMockPlaylistData()
       setMockPlaylistData({
-        ...current,
+        ...(current as PlaylistResponse),
         topTracks: [
           { name: 'Track 1', confidence: 0.856 },
           { name: 'Track 2', confidence: 0.844 },
@@ -217,7 +217,7 @@ describe('PlaylistPage', () => {
     it('should handle confidence value of 1.0', () => {
       const current = getMockPlaylistData()
       setMockPlaylistData({
-        ...current,
+        ...(current as PlaylistResponse),
         topTracks: [{ name: 'Perfect Track', confidence: 1.0 }],
       })
 
@@ -229,7 +229,7 @@ describe('PlaylistPage', () => {
     it('should handle confidence value of 0.0', () => {
       const current = getMockPlaylistData()
       setMockPlaylistData({
-        ...current,
+        ...(current as PlaylistResponse),
         topTracks: [{ name: 'No Confidence', confidence: 0.0 }],
       })
 
@@ -250,7 +250,7 @@ describe('PlaylistPage', () => {
     it('should handle long artist names', () => {
       const current = getMockPlaylistData()
       setMockPlaylistData({
-        ...current,
+        ...(current as PlaylistResponse),
         artist: 'Alicia Keys and The Roots featuring Common and Questlove',
       })
 
@@ -262,7 +262,7 @@ describe('PlaylistPage', () => {
     it('should handle many tracks gracefully', () => {
       const current = getMockPlaylistData()
       setMockPlaylistData({
-        ...current,
+        ...(current as PlaylistResponse),
         tracksAdded: 100,
         topTracks: Array.from({ length: 100 }, (_, i) => ({
           name: `Track ${i + 1}`,
