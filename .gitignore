@@ -38,9 +38,14 @@ bin/
 ### Mac OS ###
 .DS_Store
 
-# Secrets
+# Secrets & Environment
 .env
+.env.production
 application-local.yml
+
+# SSL/TLS Certificates
+ssl/
+/.well-known/
 
 # Spring
 target/

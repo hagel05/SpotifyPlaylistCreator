@@ -1,0 +1,15 @@
+# Build stage
+FROM node:20-alpine as builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+ENV VITE_API_URL=/api
+RUN npm run build
+
+# Serve stage
+FROM nginx:alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+EXPOSE ${FRONTEND_PORT:-30055}
+CMD ["nginx", "-g", "daemon off;"]
