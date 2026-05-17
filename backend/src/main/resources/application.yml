@@ -1,6 +1,6 @@
 server:
-  address: 127.0.0.1
-  port: 8080
+  address: 0.0.0.0
+  port: ${SERVER_PORT:8080}
 setlistfm:
   api-token: ${SETLIST_FM_API_KEY}
 spring:
@@ -12,7 +12,7 @@ spring:
             client-id: ${SPOTIFY_CLIENT_ID}
             client-secret: ${SPOTIFY_CLIENT_SECRET}
             authorization-grant-type: authorization_code
-            redirect-uri: "http://127.0.0.1:8080/login/oauth2/code/spotify"
+            redirect-uri: ${SPOTIFY_REDIRECT_URI:http://127.0.0.1:8080/login/oauth2/code/spotify}
             scope:
               - playlist-modify-public
               - playlist-modify-private
