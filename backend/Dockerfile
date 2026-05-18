@@ -1,8 +1,8 @@
 # Multi-stage build for Spring Boot
-FROM eclipse-temurin:21-jdk-alpine as builder
+FROM eclipse-temurin:21-jdk-alpine AS builder
 WORKDIR /app
 COPY . .
-RUN ./gradlew build -x test
+RUN chmod +x gradlew && ./gradlew build -x test
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app

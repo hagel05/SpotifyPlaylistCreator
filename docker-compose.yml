@@ -31,6 +31,7 @@ services:
     container_name: cpb-frontend
     environment:
       FRONTEND_PORT: ${FRONTEND_PORT:-30055}
+      BACKEND_HOST: ${BACKEND_HOST:-cpb-backend}
       BACKEND_PORT: ${BACKEND_PORT:-30075}
     ports:
       - "${FRONTEND_PORT:-30055}:${FRONTEND_PORT:-30055}"
