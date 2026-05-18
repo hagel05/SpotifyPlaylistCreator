@@ -23,13 +23,11 @@ export function SearchPage() {
   }
 
   const handleSpotifyLogin = () => {
-    // Redirect to backend's OAuth endpoint (use 127.0.0.1 to match Spotify app config)
-    window.location.href = 'http://127.0.0.1:8080/oauth2/authorization/spotify'
+    window.location.href = '/oauth2/authorization/spotify'
   }
 
   const handleLogout = () => {
-    // Logout endpoint
-    window.location.href = 'http://127.0.0.1:8080/logout'
+    window.location.href = '/logout'
   }
 
   const handleSearch = async (e: React.FormEvent) => {
