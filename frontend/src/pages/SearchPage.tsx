@@ -77,16 +77,19 @@ export function SearchPage() {
               </button>
             </div>
           ) : (
-            <button
-              onClick={handleSpotifyLogin}
-              className="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-200"
-            >
-              🎵 Login with Spotify
-            </button>
+            <div className="mt-6 space-y-3">
+              <p className="text-green-200 text-sm">Connect your Spotify account to search for artists and create playlists</p>
+              <button
+                onClick={handleSpotifyLogin}
+                className="mt-2 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition duration-200"
+              >
+                🎵 Login with Spotify
+              </button>
+            </div>
           )}
         </div>
 
-        <form onSubmit={handleSearch} className="space-y-4">
+        {isAuthenticated && <form onSubmit={handleSearch} className="space-y-4">
           <div>
             <input
               type="text"
@@ -110,7 +113,7 @@ export function SearchPage() {
           >
             {loading ? 'Searching...' : 'Search'}
           </button>
-        </form>
+        </form>}
       </div>
     </div>
   )

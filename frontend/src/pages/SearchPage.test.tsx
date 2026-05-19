@@ -30,6 +30,7 @@ import { SearchPage } from './SearchPage'
 describe('SearchPage', () => {
   beforeEach(() => {
     mockCheckAuth.mockClear()
+    mockCheckAuth.mockResolvedValue({ data: { authenticated: true } } as any)
     mockGetTopTracks.mockClear()
     mockNavigate.mockClear()
   })
@@ -48,14 +49,14 @@ describe('SearchPage', () => {
       expect(screen.getByText('Concert Playlist Builder')).toBeInTheDocument()
     })
 
-    it('should render the artist search input', () => {
+    it('should render the artist search input', async () => {
       renderSearchPage()
-      expect(screen.getByPlaceholderText('Search for an artist...')).toBeInTheDocument()
+      expect(await screen.findByPlaceholderText('Search for an artist...')).toBeInTheDocument()
     })
 
-    it('should render the search button', () => {
+    it('should render the search button', async () => {
       renderSearchPage()
-      expect(screen.getByRole('button', { name: /Search/i })).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: /Search/i })).toBeInTheDocument()
     })
 
     it('should render the description text', () => {
@@ -115,24 +116,16 @@ describe('SearchPage', () => {
   })
 
   describe('search functionality', () => {
-    it('should disable search button when input is empty', () => {
-      mockCheckAuth.mockResolvedValue({
-        data: { authenticated: true },
-      } as any)
-
+    it('should disable search button when input is empty', async () => {
       renderSearchPage()
 
-      const searchButton = screen.getByRole('button', { name: /Search/i })
+      const searchButton = await screen.findByRole('button', { name: /Search/i })
       expect(searchButton).toBeDisabled()
     })
 
     it('should enable search button when input has text', async () => {
-      mockCheckAuth.mockResolvedValue({
-        data: { authenticated: true },
-      } as any)
-
       renderSearchPage()
-      const input = screen.getByPlaceholderText('Search for an artist...')
+      const input = await screen.findByPlaceholderText('Search for an artist...')
 
       await userEvent.type(input, 'Beatles')
 
@@ -141,10 +134,6 @@ describe('SearchPage', () => {
     })
 
     it('should navigate to results page on successful search', async () => {
-      mockCheckAuth.mockResolvedValue({
-        data: { authenticated: true },
-      } as any)
-
       const mockTracks = [
         { track: 'Yesterday', plays: 150 },
         { track: 'Hey Jude', plays: 120 },
@@ -155,8 +144,8 @@ describe('SearchPage', () => {
       } as any)
 
       renderSearchPage()
-      const input = screen.getByPlaceholderText('Search for an artist...')
-      const searchButton = screen.getByRole('button', { name: /Search/i })
+      const input = await screen.findByPlaceholderText('Search for an artist...')
+      const searchButton = await screen.findByRole('button', { name: /Search/i })
 
       await userEvent.type(input, 'Beatles')
       await userEvent.click(searchButton)
@@ -172,10 +161,6 @@ describe('SearchPage', () => {
     })
 
     it('should display error message on search failure', async () => {
-      mockCheckAuth.mockResolvedValue({
-        data: { authenticated: true },
-      } as any)
-
       mockGetTopTracks.mockRejectedValue({
         response: {
           data: { message: 'Artist not found' },
@@ -183,8 +168,8 @@ describe('SearchPage', () => {
       })
 
       renderSearchPage()
-      const input = screen.getByPlaceholderText('Search for an artist...')
-      const searchButton = screen.getByRole('button', { name: /Search/i })
+      const input = await screen.findByPlaceholderText('Search for an artist...')
+      const searchButton = await screen.findByRole('button', { name: /Search/i })
 
       await userEvent.type(input, 'Unknown Artist')
       await userEvent.click(searchButton)
@@ -195,17 +180,13 @@ describe('SearchPage', () => {
     })
 
     it('should show loading state while searching', async () => {
-      mockCheckAuth.mockResolvedValue({
-        data: { authenticated: true },
-      } as any)
-
       mockGetTopTracks.mockImplementation(
         () => new Promise(resolve => setTimeout(() => resolve({ data: { trackCounts: [] } } as any), 100))
       )
 
       renderSearchPage()
-      const input = screen.getByPlaceholderText('Search for an artist...')
-      const searchButton = screen.getByRole('button', { name: /Search/i })
+      const input = await screen.findByPlaceholderText('Search for an artist...')
+      const searchButton = await screen.findByRole('button', { name: /Search/i })
 
       await userEvent.type(input, 'Beatles')
       await userEvent.click(searchButton)
