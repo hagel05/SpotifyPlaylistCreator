@@ -99,6 +99,21 @@ public record SetlistSearchResponse(
     public record Song(
             String name,
             Boolean tape,
-            String info
+            String info,
+            Cover cover
+    ) {}
+
+    /**
+     * Present when a song is a cover — contains the original recording artist.
+     * The resolver should prefer this artist over the performing artist when
+     * searching Spotify, since the cover version is typically not on Spotify
+     * under the performing artist's name.
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Cover(
+            String mbid,
+            String name,
+            String sortName,
+            String url
     ) {}
 }

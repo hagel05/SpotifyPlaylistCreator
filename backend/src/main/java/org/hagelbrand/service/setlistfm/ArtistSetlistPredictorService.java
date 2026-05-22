@@ -45,6 +45,9 @@ public class ArtistSetlistPredictorService {
         Map<String, Long> counts =
                 trackService.getMostPlayedTracks(setlists);
 
-        return trackService.getTopTracks(counts, limit);
+        Map<String, String> coverArtists =
+                trackService.getCoverArtistsByTrack(setlists);
+
+        return trackService.getTopTracks(counts, coverArtists, limit);
     }
 }

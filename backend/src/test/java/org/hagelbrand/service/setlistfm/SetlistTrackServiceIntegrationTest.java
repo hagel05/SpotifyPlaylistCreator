@@ -97,6 +97,29 @@ class SetlistTrackServiceIntegrationTest {
     }
 
     @Test
+    void filtersOutSongsWithNullOrBlankNames() {
+        // setlist.fm sometimes returns songs with no name (e.g. a cover listed without a title)
+        List<SetlistSearchResponse.Song> songs = List.of(
+                new SetlistSearchResponse.Song("Wherever You Will Go", false, null, null),
+                new SetlistSearchResponse.Song(null, false, null, null),   // null name
+                new SetlistSearchResponse.Song("", false, null, null),     // empty name
+                new SetlistSearchResponse.Song("   ", false, null, null)   // blank name
+        );
+
+        SetlistSearchResponse.Set set = new SetlistSearchResponse.Set("Set 1", null, songs);
+        SetlistSearchResponse.Sets sets = new SetlistSearchResponse.Sets(List.of(set));
+        SetlistSearchResponse.Setlist setlist = new SetlistSearchResponse.Setlist(
+                null, null, null, sets, null, null, "id1", "v1", "2023-01-01", "2023-01-02T00:00:00Z"
+        );
+
+        Map<String, Long> trackCounts = setlistTrackService.getMostPlayedTracks(List.of(setlist));
+
+        assertThat(trackCounts)
+                .containsOnlyKeys("Wherever You Will Go")
+                .containsEntry("Wherever You Will Go", 1L);
+    }
+
+    @Test
     void handlesEmptySetlists() {
         List<SetlistSearchResponse.Setlist> emptySetlists = List.of();
 
@@ -145,7 +168,7 @@ class SetlistTrackServiceIntegrationTest {
      */
     private SetlistSearchResponse.Setlist createMockSetlist(String id, List<String> songs) {
         List<SetlistSearchResponse.Song> songList = songs.stream()
-                .map(name -> new SetlistSearchResponse.Song(name, false, null))
+                .map(name -> new SetlistSearchResponse.Song(name, false, null, null))
                 .toList();
 
         SetlistSearchResponse.Set set = new SetlistSearchResponse.Set(

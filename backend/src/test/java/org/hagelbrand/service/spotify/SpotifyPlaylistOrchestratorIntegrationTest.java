@@ -15,6 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -44,9 +45,20 @@ class SpotifyPlaylistOrchestratorIntegrationTest {
         orchestrator = new SpotifyPlaylistOrchestrator(trackResolver, playlistService, userService);
     }
 
+    // ── Helper to build a matched TrackResolution ─────────────────────────────
+
+    private static TrackResolution matched(String track, String id, int confidence, String reason) {
+        return new TrackResolution(track, "Green Day", true, id, track, "Green Day", confidence, reason);
+    }
+
+    private static TrackResolution unmatched(String track, int confidence, String reason) {
+        return new TrackResolution(track, "Green Day", false, null, null, null, confidence, reason);
+    }
+
+    // ── Tests ─────────────────────────────────────────────────────────────────
+
     @Test
     void buildPlaylistResolvesTracksAndCreatesPlaylist() {
-        // Setup
         String artist = "Green Day";
         List<TrackCount> tracks = List.of(
                 new TrackCount("When I Come Around", 5),
@@ -56,46 +68,31 @@ class SpotifyPlaylistOrchestratorIntegrationTest {
 
         when(userService.getCurrentUserId(spotifyClient)).thenReturn("user-123");
 
-        when(trackResolver.resolve("Green Day", "When I Come Around"))
-                .thenReturn(new TrackResolution("When I Come Around", "Green Day", true,
-                        "spotify-id-1", "When I Come Around", 85, "EXACT_TRACK;POPULARITY=8"));
-
-        when(trackResolver.resolve("Green Day", "Basket Case"))
-                .thenReturn(new TrackResolution("Basket Case", "Green Day", true,
-                        "spotify-id-2", "Basket Case", 80, "EXACT_TRACK;POPULARITY=8"));
-
-        when(trackResolver.resolve("Green Day", "American Idiot"))
-                .thenReturn(new TrackResolution("American Idiot", "Green Day", true,
-                        "spotify-id-3", "American Idiot", 75, "EXACT_TRACK;POPULARITY=7"));
+        when(trackResolver.resolve("Green Day", "When I Come Around", null))
+                .thenReturn(matched("When I Come Around", "spotify-id-1", 85, "EXACT_TRACK;POPULARITY=8"));
+        when(trackResolver.resolve("Green Day", "Basket Case", null))
+                .thenReturn(matched("Basket Case", "spotify-id-2", 80, "EXACT_TRACK;POPULARITY=8"));
+        when(trackResolver.resolve("Green Day", "American Idiot", null))
+                .thenReturn(matched("American Idiot", "spotify-id-3", 75, "EXACT_TRACK;POPULARITY=7"));
 
         when(playlistService.createPlaylist(spotifyClient, "user-123", artist))
                 .thenReturn("playlist-456");
 
-        // Execute
         String playlistId = orchestrator.buildPlaylist(spotifyClient, artist, tracks);
 
-        // Verify
         assertThat(playlistId).isEqualTo("playlist-456");
 
-        // Verify all tracks were resolved
-        verify(trackResolver).resolve("Green Day", "When I Come Around");
-        verify(trackResolver).resolve("Green Day", "Basket Case");
-        verify(trackResolver).resolve("Green Day", "American Idiot");
-
-        // Verify playlist was created
+        verify(trackResolver).resolve("Green Day", "When I Come Around", null);
+        verify(trackResolver).resolve("Green Day", "Basket Case", null);
+        verify(trackResolver).resolve("Green Day", "American Idiot", null);
         verify(playlistService).createPlaylist(spotifyClient, "user-123", artist);
-
-        // Verify tracks were added to playlist with all matched track IDs
         verify(playlistService).addTracks(
-                spotifyClient,
-                "playlist-456",
-                List.of("spotify-id-1", "spotify-id-2", "spotify-id-3")
-        );
+                spotifyClient, "playlist-456",
+                List.of("spotify-id-1", "spotify-id-2", "spotify-id-3"));
     }
 
     @Test
     void excludesUnmatchedTracksFromPlaylist() {
-        // Setup
         String artist = "Green Day";
         List<TrackCount> tracks = List.of(
                 new TrackCount("When I Come Around", 5),
@@ -104,37 +101,24 @@ class SpotifyPlaylistOrchestratorIntegrationTest {
         );
 
         when(userService.getCurrentUserId(spotifyClient)).thenReturn("user-123");
-
-        when(trackResolver.resolve("Green Day", "When I Come Around"))
-                .thenReturn(new TrackResolution("When I Come Around", "Green Day", true,
-                        "spotify-id-1", "When I Come Around", 85, "EXACT_TRACK"));
-
-        // Unmatched track
-        when(trackResolver.resolve("Green Day", "Unknown Song"))
-                .thenReturn(new TrackResolution("Unknown Song", "Green Day", false,
-                        null, null, 5, "NO_RESULTS"));
-
-        when(trackResolver.resolve("Green Day", "Basket Case"))
-                .thenReturn(new TrackResolution("Basket Case", "Green Day", true,
-                        "spotify-id-2", "Basket Case", 80, "EXACT_TRACK"));
-
+        when(trackResolver.resolve("Green Day", "When I Come Around", null))
+                .thenReturn(matched("When I Come Around", "spotify-id-1", 85, "EXACT_TRACK"));
+        when(trackResolver.resolve("Green Day", "Unknown Song", null))
+                .thenReturn(unmatched("Unknown Song", 5, "NO_RESULTS"));
+        when(trackResolver.resolve("Green Day", "Basket Case", null))
+                .thenReturn(matched("Basket Case", "spotify-id-2", 80, "EXACT_TRACK"));
         when(playlistService.createPlaylist(spotifyClient, "user-123", artist))
                 .thenReturn("playlist-456");
 
-        // Execute
         orchestrator.buildPlaylist(spotifyClient, artist, tracks);
 
-        // Verify only matched tracks are added
         verify(playlistService).addTracks(
-                spotifyClient,
-                "playlist-456",
-                List.of("spotify-id-1", "spotify-id-2")  // Unknown song excluded
-        );
+                spotifyClient, "playlist-456",
+                List.of("spotify-id-1", "spotify-id-2"));
     }
 
     @Test
     void handlesAllUnmatchedTracks() {
-        // Setup
         String artist = "Unknown Artist";
         List<TrackCount> tracks = List.of(
                 new TrackCount("Song 1", 1),
@@ -142,29 +126,19 @@ class SpotifyPlaylistOrchestratorIntegrationTest {
         );
 
         when(userService.getCurrentUserId(spotifyClient)).thenReturn("user-123");
-
-        // All tracks fail to match
-        when(trackResolver.resolve(anyString(), anyString()))
+        when(trackResolver.resolve(anyString(), anyString(), isNull()))
                 .thenReturn(new TrackResolution("unknown", "Unknown Artist", false,
-                        null, null, 0, "NO_RESULTS"));
-
+                        null, null, null, 0, "NO_RESULTS"));
         when(playlistService.createPlaylist(spotifyClient, "user-123", artist))
                 .thenReturn("playlist-456");
 
-        // Execute
         orchestrator.buildPlaylist(spotifyClient, artist, tracks);
 
-        // Verify playlist is created but with no tracks
-        verify(playlistService).addTracks(
-                spotifyClient,
-                "playlist-456",
-                List.of()
-        );
+        verify(playlistService).addTracks(spotifyClient, "playlist-456", List.of());
     }
 
     @Test
     void sortsTracksByPlayCountBeforeResolution() {
-        // Setup
         String artist = "Green Day";
         List<TrackCount> unsortedTracks = List.of(
                 new TrackCount("Less Popular", 2),
@@ -173,29 +147,18 @@ class SpotifyPlaylistOrchestratorIntegrationTest {
         );
 
         when(userService.getCurrentUserId(spotifyClient)).thenReturn("user-123");
-
-        when(trackResolver.resolve(anyString(), anyString()))
-                .thenReturn(new TrackResolution("track", "Green Day", true,
-                        "spotify-id", "Track Name", 80, "EXACT_TRACK"));
-
+        when(trackResolver.resolve(anyString(), anyString(), isNull()))
+                .thenReturn(matched("track", "spotify-id", 80, "EXACT_TRACK"));
         when(playlistService.createPlaylist(spotifyClient, "user-123", artist))
                 .thenReturn("playlist-456");
 
-        // Execute
         orchestrator.buildPlaylist(spotifyClient, artist, unsortedTracks);
 
-        // Verify it processes tracks correctly (orchestrator should handle them)
-        // The important thing is that it resolves all tracks
-        verify(playlistService).addTracks(
-                eq(spotifyClient),
-                eq("playlist-456"),
-                any()
-        );
+        verify(playlistService).addTracks(eq(spotifyClient), eq("playlist-456"), any());
     }
 
     @Test
     void handlesMixedConfidenceScores() {
-        // Setup
         String artist = "Green Day";
         List<TrackCount> tracks = List.of(
                 new TrackCount("When I Come Around", 5),
@@ -204,55 +167,58 @@ class SpotifyPlaylistOrchestratorIntegrationTest {
         );
 
         when(userService.getCurrentUserId(spotifyClient)).thenReturn("user-123");
-
-        // Different confidence levels
-        when(trackResolver.resolve("Green Day", "When I Come Around"))
-                .thenReturn(new TrackResolution("When I Come Around", "Green Day", true,
-                        "spotify-id-1", "When I Come Around", 85, "EXACT_TRACK"));
-
-        when(trackResolver.resolve("Green Day", "When I Come Around (Live)"))
+        when(trackResolver.resolve("Green Day", "When I Come Around", null))
+                .thenReturn(matched("When I Come Around", "spotify-id-1", 85, "EXACT_TRACK"));
+        when(trackResolver.resolve("Green Day", "When I Come Around (Live)", null))
                 .thenReturn(new TrackResolution("When I Come Around (Live)", "Green Day", true,
-                        "spotify-id-2", "When I Come Around (Studio Version)", 40, "PARTIAL_TRACK"));
-
-        when(trackResolver.resolve("Green Day", "When I Come Around - Remix"))
-                .thenReturn(new TrackResolution("When I Come Around - Remix", "Green Day", false,
-                        null, null, 15, "LOW_CONFIDENCE"));
-
+                        "spotify-id-2", "When I Come Around (Studio Version)", "Green Day", 40, "PARTIAL_TRACK"));
+        when(trackResolver.resolve("Green Day", "When I Come Around - Remix", null))
+                .thenReturn(unmatched("When I Come Around - Remix", 15, "LOW_CONFIDENCE"));
         when(playlistService.createPlaylist(spotifyClient, "user-123", artist))
                 .thenReturn("playlist-456");
 
-        // Execute
         orchestrator.buildPlaylist(spotifyClient, artist, tracks);
 
-        // Verify only matched tracks are added
         verify(playlistService).addTracks(
-                spotifyClient,
-                "playlist-456",
-                List.of("spotify-id-1", "spotify-id-2")
+                spotifyClient, "playlist-456",
+                List.of("spotify-id-1", "spotify-id-2"));
+    }
+
+    @Test
+    void usesCoverArtistWhenResolvingCoverSong() {
+        String artist = "The CAB";
+        List<TrackCount> tracks = List.of(
+                new TrackCount("...Baby One More Time", 5, "Britney Spears")
         );
+
+        when(userService.getCurrentUserId(spotifyClient)).thenReturn("user-cab");
+        when(trackResolver.resolve("The CAB", "...Baby One More Time", "Britney Spears"))
+                .thenReturn(new TrackResolution("...Baby One More Time", "Britney Spears", true,
+                        "spotify-britney-id", "...Baby One More Time", "Britney Spears", 88, "EXACT_TRACK;POPULARITY=9"));
+        when(playlistService.createPlaylist(spotifyClient, "user-cab", artist))
+                .thenReturn("playlist-cab");
+
+        orchestrator.buildPlaylist(spotifyClient, artist, tracks);
+
+        // Must resolve under the original artist, not the performing artist
+        verify(trackResolver).resolve("The CAB", "...Baby One More Time", "Britney Spears");
+        verify(playlistService).addTracks(spotifyClient, "playlist-cab", List.of("spotify-britney-id"));
     }
 
     @Test
     void logsResolutionDetails() {
-        // Setup
         String artist = "The Beatles";
-        List<TrackCount> tracks = List.of(
-                new TrackCount("Hey Jude", 10)
-        );
+        List<TrackCount> tracks = List.of(new TrackCount("Hey Jude", 10));
 
         when(userService.getCurrentUserId(spotifyClient)).thenReturn("user-fab4");
-
-        when(trackResolver.resolve("The Beatles", "Hey Jude"))
+        when(trackResolver.resolve("The Beatles", "Hey Jude", null))
                 .thenReturn(new TrackResolution("Hey Jude", "The Beatles", true,
-                        "spotify-jude", "Hey Jude", 95, "EXACT_TRACK;POPULARITY=10"));
-
+                        "spotify-jude", "Hey Jude", "The Beatles", 95, "EXACT_TRACK;POPULARITY=10"));
         when(playlistService.createPlaylist(spotifyClient, "user-fab4", artist))
                 .thenReturn("playlist-beatles");
 
-        // Execute - should complete without errors and log properly
         String playlistId = orchestrator.buildPlaylist(spotifyClient, artist, tracks);
 
         assertThat(playlistId).isEqualTo("playlist-beatles");
     }
 }
-
