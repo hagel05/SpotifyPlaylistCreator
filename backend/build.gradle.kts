@@ -41,6 +41,9 @@ tasks.test {
 }
 
 // ── Local dev: build the React frontend and serve it from Spring Boot ──────────
+// The frontend build only runs when launching the app locally via bootRun.
+// It is intentionally excluded from `test` and `build` so CI backend jobs don't
+// need Node/npm installed.
 node {
     nodeProjectDir = file("../frontend")
 }
@@ -51,10 +54,20 @@ val buildFrontend by tasks.registering(com.github.gradle.node.npm.task.NpmTask::
     args = listOf("run", "build")
 }
 
-tasks.named<ProcessResources>("processResources") {
+// Copy the Vite output into a staging directory on the build classpath.
+// This task depends on buildFrontend, but nothing else does — so it only
+// runs when something explicitly depends on it (i.e. bootRun below).
+val copyFrontendDist by tasks.registering(Copy::class) {
+    group = "frontend"
+    description = "Stage the built React assets so Spring Boot can serve them"
     dependsOn(buildFrontend)
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    from("../frontend/dist") {
-        into("static")
-    }
+    from("../frontend/dist")
+    into(layout.buildDirectory.dir("tmp/frontend-static/static"))
+}
+
+// Add the staging directory to bootRun's classpath so Spring Boot picks up
+// the React assets under /static/** — without touching processResources.
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+    dependsOn(copyFrontendDist)
+    classpath(layout.buildDirectory.dir("tmp/frontend-static"))
 }
