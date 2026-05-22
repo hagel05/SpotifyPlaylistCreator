@@ -2,6 +2,7 @@ plugins {
     id("java")
     id("org.springframework.boot") version "3.3.5"
     id("io.spring.dependency-management") version "1.1.6"
+    id("com.github.node-gradle.node") version "7.0.2"
 }
 
 group = "org.hagelbrand"
@@ -40,18 +41,14 @@ tasks.test {
 }
 
 // ── Local dev: build the React frontend and serve it from Spring Boot ──────────
-val isWindows = System.getProperty("os.name").lowercase().contains("windows")
+node {
+    nodeProjectDir = file("../frontend")
+}
 
-val buildFrontend by tasks.registering(Exec::class) {
+val buildFrontend by tasks.registering(com.github.gradle.node.npm.task.NpmTask::class) {
     group = "frontend"
     description = "Build the React frontend with Vite"
-    workingDir = file("../frontend")
-    if (isWindows) {
-        commandLine("cmd", "/c", "npm", "run", "build")
-    } else {
-        commandLine("npm", "run", "build")
-    }
-    // No inputs/outputs declared: task always runs, never cached as UP-TO-DATE
+    args = listOf("run", "build")
 }
 
 tasks.named<ProcessResources>("processResources") {
