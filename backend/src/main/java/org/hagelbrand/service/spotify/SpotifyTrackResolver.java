@@ -67,7 +67,7 @@ public class SpotifyTrackResolver {
                 || response.tracks().items().isEmpty()) {
             return new TrackPreview(
                     trackCount.track(), trackCount.plays(), trackCount.coverArtist(),
-                    false, null, null, null, 0, "NO_RESULTS", List.of());
+                    false, null, null, null, 0, "NO_RESULTS", List.of(), null);
         }
 
         String expected = normalize(trackCount.track());
@@ -83,7 +83,7 @@ public class SpotifyTrackResolver {
             return new TrackPreview(
                     trackCount.track(), trackCount.plays(), trackCount.coverArtist(),
                     false, null, null, null, best.resolution().confidence(), "LOW_CONFIDENCE",
-                    buildAlternatives(scored, Integer.MAX_VALUE));  // show all as alternatives
+                    buildAlternatives(scored, Integer.MAX_VALUE), null);  // show all as alternatives
         }
 
         List<AlternativeTrack> alternatives = buildAlternatives(scored.subList(1, scored.size()), MAX_ALTERNATIVES);
@@ -97,7 +97,8 @@ public class SpotifyTrackResolver {
                 bestMatch.spotifyArtistName(),
                 bestMatch.confidence(),
                 bestMatch.reason(),
-                alternatives);
+                alternatives,
+                bestMatch.albumImageUrl());
     }
 
     // ── Internal helpers ──────────────────────────────────────────────────────
@@ -158,10 +159,19 @@ public class SpotifyTrackResolver {
                 ? item.artists().getFirst().name()
                 : null;
 
+        // Spotify returns images sorted by size descending [640, 300, 64].
+        // Use the smallest thumbnail available — plenty sharp for a 40×40 display slot.
+        String albumImageUrl = null;
+        if (item.album() != null
+                && item.album().images() != null
+                && !item.album().images().isEmpty()) {
+            albumImageUrl = item.album().images().getLast().url();
+        }
+
         return new TrackResolution(
                 originalTrack, artist, true,
                 item.id(), item.name(), artistName,
-                score, reason.toString());
+                score, reason.toString(), albumImageUrl);
     }
 
     private List<AlternativeTrack> buildAlternatives(List<ScoredItem> candidates, int limit) {
@@ -172,12 +182,13 @@ public class SpotifyTrackResolver {
                         si.resolution().spotifyTrackId(),
                         si.resolution().spotifyTrackName(),
                         si.resolution().spotifyArtistName(),
-                        si.resolution().confidence()))
+                        si.resolution().confidence(),
+                        si.resolution().albumImageUrl()))
                 .toList();
     }
 
     private TrackResolution unmatched(String track, String artist, int confidence, String reason) {
-        return new TrackResolution(track, artist, false, null, null, null, confidence, reason);
+        return new TrackResolution(track, artist, false, null, null, null, confidence, reason, null);
     }
 
     private String normalize(String value) {

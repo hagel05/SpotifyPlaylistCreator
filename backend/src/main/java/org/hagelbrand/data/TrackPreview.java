@@ -17,6 +17,7 @@ import java.util.List;
  * @param reason            Debug string explaining why this match was chosen.
  * @param alternatives      Up to 4 other Spotify tracks that scored above zero —
  *                          shown in the swap picker.
+ * @param albumImageUrl     URL of the album thumbnail image; {@code null} if unmatched.
  */
 public record TrackPreview(
         String setlistTrack,
@@ -28,5 +29,6 @@ public record TrackPreview(
         String spotifyArtistName,
         int confidence,
         String reason,
-        List<AlternativeTrack> alternatives
+        List<AlternativeTrack> alternatives,
+        String albumImageUrl
 ) {}

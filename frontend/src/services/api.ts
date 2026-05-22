@@ -43,6 +43,7 @@ export interface AlternativeTrack {
   spotifyTrackName: string
   spotifyArtistName: string | null
   confidence: number
+  albumImageUrl?: string | null
 }
 
 /** Full resolution preview for a single setlist.fm track. */
@@ -57,6 +58,7 @@ export interface TrackPreview {
   confidence: number
   reason: string
   alternatives: AlternativeTrack[]
+  albumImageUrl?: string | null
 }
 
 export const spotifyApi = {

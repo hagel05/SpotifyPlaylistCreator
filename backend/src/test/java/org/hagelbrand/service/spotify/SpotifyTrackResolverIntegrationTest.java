@@ -31,17 +31,24 @@ class SpotifyTrackResolverIntegrationTest {
         trackResolver = new SpotifyTrackResolver(spotifyService);
     }
 
+    // ── Helper: build an Album with no images (sufficient for scorer tests) ────
+
+    private static SpotifySearchResponse.Album album(String id, String name) {
+        return new SpotifySearchResponse.Album(id, name, null);
+    }
+
+    // ── Tests ─────────────────────────────────────────────────────────────────
+
     @Test
     void matchesTrackWithExactName() {
-        // Simulate a search that returns the exact track
         SpotifySearchResponse response = new SpotifySearchResponse(
                 new SpotifySearchResponse.Tracks(List.of(
                         new SpotifySearchResponse.Item(
                                 "spotify-id-123",
                                 "When I Come Around",
                                 List.of(new SpotifySearchResponse.Artist("Green Day")),
-                                new SpotifySearchResponse.Album("album-id", "Dookie"),
-                                82  // popularity
+                                album("album-id", "Dookie"),
+                                82
                         )
                 ))
         );
@@ -54,20 +61,19 @@ class SpotifyTrackResolverIntegrationTest {
         assertThat(resolution.matched()).isTrue();
         assertThat(resolution.spotifyTrackId()).isEqualTo("spotify-id-123");
         assertThat(resolution.spotifyTrackName()).isEqualTo("When I Come Around");
-        assertThat(resolution.confidence()).isGreaterThan(50);  // Should have high confidence
+        assertThat(resolution.confidence()).isGreaterThan(50);
         assertThat(resolution.reason()).contains("EXACT_TRACK");
     }
 
     @Test
     void matchesTrackWithPartialName() {
-        // Simulate a search where only partial match is available
         SpotifySearchResponse response = new SpotifySearchResponse(
                 new SpotifySearchResponse.Tracks(List.of(
                         new SpotifySearchResponse.Item(
                                 "spotify-id-456",
                                 "When I Come Around (Live)",
                                 List.of(new SpotifySearchResponse.Artist("Green Day")),
-                                new SpotifySearchResponse.Album("album-id", "Live Album"),
+                                album("album-id", "Live Album"),
                                 45
                         )
                 ))
@@ -85,15 +91,14 @@ class SpotifyTrackResolverIntegrationTest {
 
     @Test
     void rejectTrackWithLowConfidence() {
-        // Simulate a search that returns a weak match
         SpotifySearchResponse response = new SpotifySearchResponse(
                 new SpotifySearchResponse.Tracks(List.of(
                         new SpotifySearchResponse.Item(
                                 "spotify-id-789",
                                 "Random Song",
                                 List.of(new SpotifySearchResponse.Artist("Another Artist")),
-                                new SpotifySearchResponse.Album("album-id", "Album"),
-                                10  // very low popularity
+                                album("album-id", "Album"),
+                                10
                         )
                 ))
         );
@@ -110,7 +115,6 @@ class SpotifyTrackResolverIntegrationTest {
 
     @Test
     void handlesNoSearchResults() {
-        // Simulate an empty search result
         SpotifySearchResponse response = new SpotifySearchResponse(
                 new SpotifySearchResponse.Tracks(List.of())
         );
@@ -138,14 +142,13 @@ class SpotifyTrackResolverIntegrationTest {
 
     @Test
     void normalizesTrackNamesBeforeMatching() {
-        // Test with accented characters and special punctuation
         SpotifySearchResponse response = new SpotifySearchResponse(
                 new SpotifySearchResponse.Tracks(List.of(
                         new SpotifySearchResponse.Item(
                                 "spotify-id-accent",
-                                "Clandestín",  // matching after normalization (accent removed)
+                                "Clandestín",
                                 List.of(new SpotifySearchResponse.Artist("Artist")),
-                                new SpotifySearchResponse.Album("album-id", "Album"),
+                                album("album-id", "Album"),
                                 70
                         )
                 ))
@@ -156,22 +159,20 @@ class SpotifyTrackResolverIntegrationTest {
 
         TrackResolution resolution = trackResolver.resolve("Artist", "Clandestín");
 
-        // After normalization, these should match (accents removed)
         assertThat(resolution.matched()).isTrue();
         assertThat(resolution.reason()).contains("EXACT_TRACK");
     }
 
     @Test
     void scoresPopularityCorrectly() {
-        // High popularity track should score higher
         SpotifySearchResponse responseHighPopularity = new SpotifySearchResponse(
                 new SpotifySearchResponse.Tracks(List.of(
                         new SpotifySearchResponse.Item(
                                 "id-high-pop",
                                 "Song Name",
                                 List.of(new SpotifySearchResponse.Artist("Artist")),
-                                new SpotifySearchResponse.Album("album-id", "Album"),
-                                90  // high popularity
+                                album("album-id", "Album"),
+                                90
                         )
                 ))
         );
@@ -182,51 +183,46 @@ class SpotifyTrackResolverIntegrationTest {
                                 "id-low-pop",
                                 "Song Name",
                                 List.of(new SpotifySearchResponse.Artist("Artist")),
-                                new SpotifySearchResponse.Album("album-id", "Album"),
-                                20  // low popularity
+                                album("album-id", "Album"),
+                                20
                         )
                 ))
         );
 
         when(spotifyService.searchTrack("Artist", "Song Name"))
                 .thenReturn(responseHighPopularity);
-
-        TrackResolution highPopResolution = trackResolver.resolve("Artist", "Song Name");
-        int highPopScore = highPopResolution.confidence();
+        int highPopScore = trackResolver.resolve("Artist", "Song Name").confidence();
 
         when(spotifyService.searchTrack("Artist", "Song Name"))
                 .thenReturn(responseLowPopularity);
-
-        TrackResolution lowPopResolution = trackResolver.resolve("Artist", "Song Name");
-        int lowPopScore = lowPopResolution.confidence();
+        int lowPopScore = trackResolver.resolve("Artist", "Song Name").confidence();
 
         assertThat(highPopScore).isGreaterThan(lowPopScore);
     }
 
     @Test
     void selectsBestCandidateFromMultipleResults() {
-        // Multiple tracks returned; should select the best match
         SpotifySearchResponse response = new SpotifySearchResponse(
                 new SpotifySearchResponse.Tracks(List.of(
                         new SpotifySearchResponse.Item(
                                 "id-weak",
                                 "Some Random Song",
                                 List.of(new SpotifySearchResponse.Artist("Green Day")),
-                                new SpotifySearchResponse.Album("album-id", "Album"),
+                                album("album-id", "Album"),
                                 40
                         ),
                         new SpotifySearchResponse.Item(
                                 "id-best",
-                                "Basket Case",  // Exact match
+                                "Basket Case",
                                 List.of(new SpotifySearchResponse.Artist("Green Day")),
-                                new SpotifySearchResponse.Album("album-id", "Dookie"),
+                                album("album-id", "Dookie"),
                                 85
                         ),
                         new SpotifySearchResponse.Item(
                                 "id-okay",
                                 "Basket Case (Cover)",
                                 List.of(new SpotifySearchResponse.Artist("Another Band")),
-                                new SpotifySearchResponse.Album("album-id", "Album"),
+                                album("album-id", "Album"),
                                 50
                         )
                 ))
@@ -244,14 +240,13 @@ class SpotifyTrackResolverIntegrationTest {
 
     @Test
     void handlesRealWorldComplexTrackNames() {
-        // Test with real-world complex track names
         SpotifySearchResponse response = new SpotifySearchResponse(
                 new SpotifySearchResponse.Tracks(List.of(
                         new SpotifySearchResponse.Item(
                                 "spotify-id-complex",
                                 "Wannabe (Radio Edit Version 2)",
                                 List.of(new SpotifySearchResponse.Artist("Spice Girls")),
-                                new SpotifySearchResponse.Album("album-id", "Spice"),
+                                album("album-id", "Spice"),
                                 88
                         )
                 ))
@@ -266,4 +261,3 @@ class SpotifyTrackResolverIntegrationTest {
         assertThat(resolution.confidence()).isGreaterThan(30);
     }
 }
-

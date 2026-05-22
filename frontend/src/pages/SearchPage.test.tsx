@@ -2,18 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BrowserRouter } from 'react-router-dom'
+import type { TrackPreview } from '../services/api'
 
-// Use vi.hoisted to properly hoist mock definitions
-const { mockCheckAuth, mockGetTopTracks, mockNavigate, mockSearchArtists } = vi.hoisted(() => ({
+const { mockCheckAuth, mockPreviewPlaylist, mockNavigate, mockSearchArtists } = vi.hoisted(() => ({
   mockCheckAuth: vi.fn(),
-  mockGetTopTracks: vi.fn(),
+  mockPreviewPlaylist: vi.fn(),
   mockNavigate: vi.fn(),
   mockSearchArtists: vi.fn(),
 }))
 
 vi.mock('../services/api', () => ({
   spotifyApi: {
-    getTopTracks: mockGetTopTracks,
+    previewPlaylist: mockPreviewPlaylist,
     checkAuth: mockCheckAuth,
     searchArtists: mockSearchArtists,
   },
@@ -29,11 +29,38 @@ vi.mock('react-router-dom', async () => {
 
 import { SearchPage } from './SearchPage'
 
+const MOCK_PREVIEWS: TrackPreview[] = [
+  {
+    setlistTrack: 'Yesterday',
+    plays: 150,
+    coverArtist: null,
+    matched: true,
+    spotifyTrackId: 'id-yesterday',
+    spotifyTrackName: 'Yesterday',
+    spotifyArtistName: 'The Beatles',
+    confidence: 95,
+    reason: 'EXACT_TRACK',
+    alternatives: [],
+  },
+  {
+    setlistTrack: 'Hey Jude',
+    plays: 120,
+    coverArtist: null,
+    matched: true,
+    spotifyTrackId: 'id-hey-jude',
+    spotifyTrackName: 'Hey Jude',
+    spotifyArtistName: 'The Beatles',
+    confidence: 90,
+    reason: 'EXACT_TRACK',
+    alternatives: [],
+  },
+]
+
 describe('SearchPage', () => {
   beforeEach(() => {
     mockCheckAuth.mockClear()
     mockCheckAuth.mockResolvedValue({ data: { authenticated: true } } as any)
-    mockGetTopTracks.mockClear()
+    mockPreviewPlaylist.mockClear()
     mockNavigate.mockClear()
     mockSearchArtists.mockClear()
     mockSearchArtists.mockResolvedValue({ data: [] } as any)
@@ -71,48 +98,32 @@ describe('SearchPage', () => {
 
   describe('authentication state', () => {
     it('should show login button when not authenticated', async () => {
-      mockCheckAuth.mockResolvedValue({
-        data: { authenticated: false },
-      } as any)
-
+      mockCheckAuth.mockResolvedValue({ data: { authenticated: false } } as any)
       renderSearchPage()
-
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /Login with Spotify/i })).toBeInTheDocument()
       })
     })
 
     it('should show logout button when authenticated', async () => {
-      mockCheckAuth.mockResolvedValue({
-        data: { authenticated: true },
-      } as any)
-
+      mockCheckAuth.mockResolvedValue({ data: { authenticated: true } } as any)
       renderSearchPage()
-
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /Logout/i })).toBeInTheDocument()
       })
     })
 
     it('should display logged in indicator when authenticated', async () => {
-      mockCheckAuth.mockResolvedValue({
-        data: { authenticated: true },
-      } as any)
-
+      mockCheckAuth.mockResolvedValue({ data: { authenticated: true } } as any)
       renderSearchPage()
-
       await waitFor(() => {
         expect(screen.getByText(/Logged in with Spotify/i)).toBeInTheDocument()
       })
     })
 
     it('should call checkAuth on component mount', async () => {
-      mockCheckAuth.mockResolvedValue({
-        data: { authenticated: false },
-      } as any)
-
+      mockCheckAuth.mockResolvedValue({ data: { authenticated: false } } as any)
       renderSearchPage()
-
       await waitFor(() => {
         expect(mockCheckAuth).toHaveBeenCalledTimes(1)
       })
@@ -122,7 +133,6 @@ describe('SearchPage', () => {
   describe('search functionality', () => {
     it('should disable search button when input is empty', async () => {
       renderSearchPage()
-
       const searchButton = await screen.findByRole('button', { name: /Search/i })
       expect(searchButton).toBeDisabled()
     })
@@ -130,22 +140,12 @@ describe('SearchPage', () => {
     it('should enable search button when input has text', async () => {
       renderSearchPage()
       const input = await screen.findByPlaceholderText('Search for an artist...')
-
       await userEvent.type(input, 'Beatles')
-
-      const searchButton = screen.getByRole('button', { name: /Search/i })
-      expect(searchButton).not.toBeDisabled()
+      expect(screen.getByRole('button', { name: /Search/i })).not.toBeDisabled()
     })
 
     it('should navigate to results page on successful search', async () => {
-      const mockTracks = [
-        { track: 'Yesterday', plays: 150 },
-        { track: 'Hey Jude', plays: 120 },
-      ]
-
-      mockGetTopTracks.mockResolvedValue({
-        data: { trackCounts: mockTracks },
-      } as any)
+      mockPreviewPlaylist.mockResolvedValue({ data: MOCK_PREVIEWS } as any)
 
       renderSearchPage()
       const input = await screen.findByPlaceholderText('Search for an artist...')
@@ -156,19 +156,14 @@ describe('SearchPage', () => {
 
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenCalledWith('/results', {
-          state: {
-            artist: 'Beatles',
-            topTracks: mockTracks,
-          },
+          state: { artist: 'Beatles', previews: MOCK_PREVIEWS },
         })
       })
     })
 
     it('should display error message on search failure', async () => {
-      mockGetTopTracks.mockRejectedValue({
-        response: {
-          data: { message: 'Artist not found' },
-        },
+      mockPreviewPlaylist.mockRejectedValue({
+        response: { data: { message: 'Artist not found' } },
       })
 
       renderSearchPage()
@@ -184,8 +179,8 @@ describe('SearchPage', () => {
     })
 
     it('should show loading state while searching', async () => {
-      mockGetTopTracks.mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve({ data: { trackCounts: [] } } as any), 100))
+      mockPreviewPlaylist.mockImplementation(
+        () => new Promise(resolve => setTimeout(() => resolve({ data: MOCK_PREVIEWS } as any), 100))
       )
 
       renderSearchPage()
@@ -201,6 +196,19 @@ describe('SearchPage', () => {
         expect(screen.queryByRole('button', { name: /Searching/i })).not.toBeInTheDocument()
       })
     })
+
+    it('should show error when no tracks are found', async () => {
+      mockPreviewPlaylist.mockResolvedValue({ data: [] } as any)
+
+      renderSearchPage()
+      const input = await screen.findByPlaceholderText('Search for an artist...')
+      await userEvent.type(input, 'Obscure Artist')
+      await userEvent.click(screen.getByRole('button', { name: /Search/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText('No concert data found for this artist')).toBeInTheDocument()
+      })
+    })
   })
 
   describe('autocomplete', () => {
@@ -211,7 +219,6 @@ describe('SearchPage', () => {
 
       renderSearchPage()
       const input = await screen.findByPlaceholderText('Search for an artist...')
-
       await userEvent.type(input, 'Beat')
 
       await waitFor(() => {
@@ -226,7 +233,6 @@ describe('SearchPage', () => {
 
       renderSearchPage()
       const input = await screen.findByPlaceholderText('Search for an artist...')
-
       await userEvent.type(input, 'Beat')
 
       await waitFor(() => screen.getByText('The Beatles'))
@@ -238,9 +244,7 @@ describe('SearchPage', () => {
     it('should not show suggestions when query is less than 2 characters', async () => {
       renderSearchPage()
       const input = await screen.findByPlaceholderText('Search for an artist...')
-
       await userEvent.type(input, 'B')
-
       expect(mockSearchArtists).not.toHaveBeenCalled()
     })
   })
@@ -253,12 +257,10 @@ describe('SearchPage', () => {
       } as any)
 
       const locationSpy = vi.spyOn(window, 'location', 'get')
-
       renderSearchPage()
 
       await waitFor(() => {
-        const loginButton = screen.getByRole('button', { name: /Login with Spotify/i })
-        expect(loginButton).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /Login with Spotify/i })).toBeInTheDocument()
       })
 
       locationSpy.mockRestore()
@@ -273,8 +275,7 @@ describe('SearchPage', () => {
       renderSearchPage()
 
       await waitFor(() => {
-        const logoutButton = screen.getByRole('button', { name: /Logout/i })
-        expect(logoutButton).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /Logout/i })).toBeInTheDocument()
       })
     })
   })

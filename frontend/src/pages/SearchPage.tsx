@@ -42,17 +42,16 @@ export function SearchPage() {
     setError(null)
 
     try {
-      const response = await spotifyApi.getTopTracks(artist)
-      const tracks = response.data.trackCounts || []
-      if (!tracks || tracks.length === 0) {
+      // Fetch the full preview in one shot: setlist.fm + Spotify resolution happen
+      // server-side, so the results page can render fully formed without a second load.
+      const response = await spotifyApi.previewPlaylist(artist)
+      const previews = response.data
+      if (!previews || previews.length === 0) {
         setError('No concert data found for this artist')
         return
       }
       navigate('/results', {
-        state: {
-          artist,
-          topTracks: tracks,
-        },
+        state: { artist, previews },
       })
     } catch (err: any) {
       console.error('Search error:', err)
