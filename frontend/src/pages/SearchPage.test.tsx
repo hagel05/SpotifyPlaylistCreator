@@ -4,16 +4,18 @@ import userEvent from '@testing-library/user-event'
 import { BrowserRouter } from 'react-router-dom'
 
 // Use vi.hoisted to properly hoist mock definitions
-const { mockCheckAuth, mockGetTopTracks, mockNavigate } = vi.hoisted(() => ({
+const { mockCheckAuth, mockGetTopTracks, mockNavigate, mockSearchArtists } = vi.hoisted(() => ({
   mockCheckAuth: vi.fn(),
   mockGetTopTracks: vi.fn(),
   mockNavigate: vi.fn(),
+  mockSearchArtists: vi.fn(),
 }))
 
 vi.mock('../services/api', () => ({
   spotifyApi: {
     getTopTracks: mockGetTopTracks,
     checkAuth: mockCheckAuth,
+    searchArtists: mockSearchArtists,
   },
 }))
 
@@ -33,6 +35,8 @@ describe('SearchPage', () => {
     mockCheckAuth.mockResolvedValue({ data: { authenticated: true } } as any)
     mockGetTopTracks.mockClear()
     mockNavigate.mockClear()
+    mockSearchArtists.mockClear()
+    mockSearchArtists.mockResolvedValue({ data: [] } as any)
   })
 
   const renderSearchPage = () => {
@@ -196,6 +200,48 @@ describe('SearchPage', () => {
       await waitFor(() => {
         expect(screen.queryByRole('button', { name: /Searching/i })).not.toBeInTheDocument()
       })
+    })
+  })
+
+  describe('autocomplete', () => {
+    it('should show suggestions dropdown when typing', async () => {
+      mockSearchArtists.mockResolvedValue({
+        data: [{ id: '1', name: 'The Beatles', imageUrl: null }],
+      } as any)
+
+      renderSearchPage()
+      const input = await screen.findByPlaceholderText('Search for an artist...')
+
+      await userEvent.type(input, 'Beat')
+
+      await waitFor(() => {
+        expect(screen.getByText('The Beatles')).toBeInTheDocument()
+      })
+    })
+
+    it('should populate input when a suggestion is clicked', async () => {
+      mockSearchArtists.mockResolvedValue({
+        data: [{ id: '1', name: 'The Beatles', imageUrl: null }],
+      } as any)
+
+      renderSearchPage()
+      const input = await screen.findByPlaceholderText('Search for an artist...')
+
+      await userEvent.type(input, 'Beat')
+
+      await waitFor(() => screen.getByText('The Beatles'))
+      await userEvent.click(screen.getByText('The Beatles'))
+
+      expect(input).toHaveValue('The Beatles')
+    })
+
+    it('should not show suggestions when query is less than 2 characters', async () => {
+      renderSearchPage()
+      const input = await screen.findByPlaceholderText('Search for an artist...')
+
+      await userEvent.type(input, 'B')
+
+      expect(mockSearchArtists).not.toHaveBeenCalled()
     })
   })
 

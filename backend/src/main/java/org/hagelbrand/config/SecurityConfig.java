@@ -21,7 +21,8 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(withDefaults())
-                .oauth2Client(withDefaults());
+                .oauth2Client(withDefaults())
+                .logout(logout -> logout.logoutSuccessUrl("/"));
         return http.build();
     }
 }

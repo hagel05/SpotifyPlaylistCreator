@@ -38,3 +38,26 @@ dependencies {
 tasks.test {
     useJUnitPlatform()
 }
+
+// ── Local dev: build the React frontend and serve it from Spring Boot ──────────
+val isWindows = System.getProperty("os.name").lowercase().contains("windows")
+
+val buildFrontend by tasks.registering(Exec::class) {
+    group = "frontend"
+    description = "Build the React frontend with Vite"
+    workingDir = file("../frontend")
+    if (isWindows) {
+        commandLine("cmd", "/c", "npm", "run", "build")
+    } else {
+        commandLine("npm", "run", "build")
+    }
+    // No inputs/outputs declared: task always runs, never cached as UP-TO-DATE
+}
+
+tasks.named<ProcessResources>("processResources") {
+    dependsOn(buildFrontend)
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from("../frontend/dist") {
+        into("static")
+    }
+}

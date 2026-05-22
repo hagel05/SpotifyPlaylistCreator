@@ -13,10 +13,11 @@
     "test:coverage": "vitest --coverage"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.10",
+    "axios": "^1.6.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.21.0",
-    "axios": "^1.6.2"
+    "react-router-dom": "^6.21.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.1.5",
