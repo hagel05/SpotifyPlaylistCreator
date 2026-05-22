@@ -19,8 +19,10 @@ public record SpotifySearchResponse(Tracks tracks) {
     ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Album(String id,
-                        String name) {}
+    public record Album(String id, String name, List<Image> images) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Image(String url, Integer height, Integer width) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Artist(String name) {}

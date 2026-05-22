@@ -8,5 +8,6 @@ public record AlternativeTrack(
         String spotifyTrackId,
         String spotifyTrackName,
         String spotifyArtistName,
-        int confidence
+        int confidence,
+        String albumImageUrl
 ) {}

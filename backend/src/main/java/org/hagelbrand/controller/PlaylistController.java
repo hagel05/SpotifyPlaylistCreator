@@ -16,6 +16,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import org.springframework.security.concurrent.DelegatingSecurityContextExecutorService;
 
 @RestController
 @RequestMapping("/api/playlist")
@@ -87,9 +90,24 @@ public class PlaylistController {
         log.info("Previewing playlist for artist {}", artist);
         List<TrackCount> tracks = artistSetlistPredictorService.getTopTracksForArtist(artist, limit);
 
-        return tracks.stream()
-                .map(tc -> trackResolver.resolveWithAlternatives(artist, tc))
-                .toList();
+        // Each track resolution is an independent Spotify search — run them all in
+        // parallel on virtual threads.  Order is preserved: futures are collected in
+        // the same order as `tracks` and joined in that same order below.
+        //
+        // DelegatingSecurityContextExecutorService captures the current SecurityContext
+        // (set on this request thread) and propagates it to each virtual thread, so
+        // SpotifyServiceImpl can still resolve the logged-in OAuth2 user.
+        try (var executor = new DelegatingSecurityContextExecutorService(
+                Executors.newVirtualThreadPerTaskExecutor())) {
+            List<CompletableFuture<TrackPreview>> futures = tracks.stream()
+                    .map(tc -> CompletableFuture.supplyAsync(
+                            () -> trackResolver.resolveWithAlternatives(artist, tc), executor))
+                    .toList();
+
+            return futures.stream()
+                    .map(CompletableFuture::join)
+                    .toList();
+        }
     }
 
     /**

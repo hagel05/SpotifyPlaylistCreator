@@ -12,6 +12,7 @@ package org.hagelbrand.data;
  * @param spotifyArtistName Primary artist name from Spotify, or {@code null} when not matched.
  * @param confidence        Composite confidence score (higher is better).
  * @param reason            Human-readable reason string used for logging/debugging.
+ * @param albumImageUrl     URL of the album thumbnail image, or {@code null} when not matched.
  */
 public record TrackResolution(
         String setlistTrack,
@@ -21,5 +22,6 @@ public record TrackResolution(
         String spotifyTrackName,
         String spotifyArtistName,
         int confidence,
-        String reason
+        String reason,
+        String albumImageUrl
 ) {}

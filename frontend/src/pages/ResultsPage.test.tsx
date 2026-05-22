@@ -4,23 +4,14 @@ import userEvent from '@testing-library/user-event'
 import { BrowserRouter } from 'react-router-dom'
 
 const {
-  mockPreviewPlaylist,
   mockCreatePlaylistFromTracks,
   mockNavigate,
   getMockLocationState,
   setMockLocationState,
 } = vi.hoisted(() => {
-  let mockLocationState = {
-    artist: 'The Beatles',
-    topTracks: [
-      { track: 'Yesterday', plays: 150 },
-      { track: 'Hey Jude', plays: 120 },
-      { track: 'Let It Be', plays: 100 },
-    ],
-  }
+  let mockLocationState: any = {}
 
   return {
-    mockPreviewPlaylist: vi.fn(),
     mockCreatePlaylistFromTracks: vi.fn(),
     mockNavigate: vi.fn(),
     getMockLocationState: () => mockLocationState,
@@ -30,7 +21,6 @@ const {
 
 vi.mock('../services/api', () => ({
   spotifyApi: {
-    previewPlaylist: mockPreviewPlaylist,
     createPlaylistFromTracks: mockCreatePlaylistFromTracks,
   },
 }))
@@ -79,18 +69,12 @@ function renderResultsPage() {
 
 describe('ResultsPage', () => {
   beforeEach(() => {
-    mockPreviewPlaylist.mockClear()
     mockCreatePlaylistFromTracks.mockClear()
     mockNavigate.mockClear()
     setMockLocationState({
       artist: 'The Beatles',
-      topTracks: [
-        { track: 'Yesterday', plays: 150 },
-        { track: 'Hey Jude', plays: 120 },
-        { track: 'Let It Be', plays: 100 },
-      ],
+      previews: DEFAULT_PREVIEWS,
     })
-    mockPreviewPlaylist.mockResolvedValue({ data: DEFAULT_PREVIEWS })
   })
 
   describe('rendering with valid data', () => {
@@ -104,11 +88,8 @@ describe('ResultsPage', () => {
       expect(screen.getByText(/3 tracks from concert setlists/)).toBeInTheDocument()
     })
 
-    it('should render all tracks with their play counts', async () => {
+    it('should render all tracks with their play counts', () => {
       renderResultsPage()
-
-      // Wait for preview to load (track name appears in both the label and the resolution badge)
-      await waitFor(() => expect(screen.getAllByText('Yesterday').length).toBeGreaterThan(0))
 
       expect(screen.getAllByText('Yesterday')[0]).toBeInTheDocument()
       expect(screen.getByText('150 plays')).toBeInTheDocument()
@@ -118,10 +99,10 @@ describe('ResultsPage', () => {
       expect(screen.getByText('100 plays')).toBeInTheDocument()
     })
 
-    it('should display tracks in ascending play-count order (lowest first, highest last)', async () => {
-      // Previews arrive in the order the backend returns them (highest-first from setlist.fm)
-      mockPreviewPlaylist.mockResolvedValue({
-        data: [
+    it('should display tracks in ascending play-count order (lowest first, highest last)', () => {
+      setMockLocationState({
+        artist: 'The Beatles',
+        previews: [
           makePreview({ setlistTrack: 'Yesterday', plays: 150 }),
           makePreview({ setlistTrack: 'Hey Jude', plays: 120 }),
           makePreview({ setlistTrack: 'Let It Be', plays: 100 }),
@@ -129,9 +110,6 @@ describe('ResultsPage', () => {
       })
 
       renderResultsPage()
-
-      // Wait for previews to load and be sorted
-      await waitFor(() => expect(screen.getAllByTestId('track-item')).toHaveLength(3))
 
       const trackNames = screen
         .getAllByTestId('track-item')
@@ -146,19 +124,22 @@ describe('ResultsPage', () => {
       expect(screen.getByRole('button', { name: /Back to Search/i })).toBeInTheDocument()
     })
 
-    it('should render create playlist button', async () => {
+    it('should render create playlist button with track count', () => {
       renderResultsPage()
-      // Button label includes track count once preview resolves
-      await waitFor(() =>
-        expect(screen.getByRole('button', { name: /Create Spotify Playlist/i })).toBeInTheDocument()
-      )
+      expect(screen.getByRole('button', { name: /Create Spotify Playlist \(3 tracks\)/i })).toBeInTheDocument()
+    })
+
+    it('should render checkboxes for all tracks', () => {
+      renderResultsPage()
+      expect(screen.getAllByRole('checkbox')).toHaveLength(3)
     })
   })
 
   describe('cover song display', () => {
-    it('should show cover attribution when a track is a cover', async () => {
-      mockPreviewPlaylist.mockResolvedValue({
-        data: [
+    it('should show cover attribution when a track is a cover', () => {
+      setMockLocationState({
+        artist: 'The CAB',
+        previews: [
           makePreview({
             setlistTrack: '...Baby One More Time',
             plays: 5,
@@ -167,35 +148,19 @@ describe('ResultsPage', () => {
         ],
       })
 
-      setMockLocationState({
-        artist: 'The CAB',
-        topTracks: [{ track: '...Baby One More Time', plays: 5 }],
-      })
-
       renderResultsPage()
 
-      await waitFor(() =>
-        expect(screen.getByText(/Cover · Britney Spears/)).toBeInTheDocument()
-      )
+      expect(screen.getByText(/Cover · Britney Spears/)).toBeInTheDocument()
     })
   })
 
   describe('track deselection', () => {
-    it('shows checkboxes after previews load', async () => {
-      renderResultsPage()
-
-      await waitFor(() =>
-        expect(screen.getAllByRole('checkbox')).toHaveLength(3)
-      )
-    })
-
     it('unchecking a track deselects it', async () => {
       renderResultsPage()
 
-      const checkboxes = await waitFor(() => screen.getAllByRole('checkbox'))
+      const checkboxes = screen.getAllByRole('checkbox')
       await userEvent.click(checkboxes[0])
 
-      // Selected count in button label should drop
       expect(
         screen.getByRole('button', { name: /Create Spotify Playlist \(2 tracks\)/i })
       ).toBeInTheDocument()
@@ -204,7 +169,7 @@ describe('ResultsPage', () => {
     it('disables create button when no tracks are selected', async () => {
       renderResultsPage()
 
-      const checkboxes = await waitFor(() => screen.getAllByRole('checkbox'))
+      const checkboxes = screen.getAllByRole('checkbox')
       for (const cb of checkboxes) await userEvent.click(cb)
 
       expect(screen.getByRole('button', { name: /Create Spotify Playlist \(0 tracks\)/i })).toBeDisabled()
@@ -212,31 +177,27 @@ describe('ResultsPage', () => {
   })
 
   describe('unmatched tracks', () => {
-    it('shows no-match badge for unresolved tracks', async () => {
-      mockPreviewPlaylist.mockResolvedValue({
-        data: [
-          makePreview({ setlistTrack: 'Unknown Song', plays: 2, matched: false,
-            spotifyTrackId: null, spotifyTrackName: null, spotifyArtistName: null,
-            confidence: 0, reason: 'NO_RESULTS' }),
-        ],
-      })
-
+    it('shows no-match badge for unresolved tracks', () => {
       setMockLocationState({
         artist: 'Band',
-        topTracks: [{ track: 'Unknown Song', plays: 2 }],
+        previews: [
+          makePreview({
+            setlistTrack: 'Unknown Song', plays: 2, matched: false,
+            spotifyTrackId: null, spotifyTrackName: null, spotifyArtistName: null,
+            confidence: 0, reason: 'NO_RESULTS',
+          }),
+        ],
       })
 
       renderResultsPage()
 
-      await waitFor(() =>
-        expect(screen.getByText(/No match found/)).toBeInTheDocument()
-      )
+      expect(screen.getByText(/No match found/)).toBeInTheDocument()
     })
   })
 
   describe('no artist state', () => {
     it('should render no results message when artist is missing', () => {
-      setMockLocationState({ artist: null, topTracks: [] })
+      setMockLocationState({ artist: null, previews: [] })
       renderResultsPage()
       expect(screen.getByText('No results to display. Please search for an artist.')).toBeInTheDocument()
     })
@@ -244,7 +205,7 @@ describe('ResultsPage', () => {
 
   describe('no tracks state', () => {
     it('should render no tracks message when tracks array is empty', () => {
-      setMockLocationState({ artist: 'Unknown Artist', topTracks: [] })
+      setMockLocationState({ artist: 'Unknown Artist', previews: [] })
       renderResultsPage()
       expect(screen.getByText(/No tracks found for "Unknown Artist"/)).toBeInTheDocument()
     })
@@ -264,7 +225,6 @@ describe('ResultsPage', () => {
 
       renderResultsPage()
 
-      await waitFor(() => screen.getByRole('button', { name: /Create Spotify Playlist \(3 tracks\)/i }))
       await userEvent.click(screen.getByRole('button', { name: /Create Spotify Playlist \(3 tracks\)/i }))
 
       await waitFor(() =>
@@ -286,8 +246,6 @@ describe('ResultsPage', () => {
       mockCreatePlaylistFromTracks.mockResolvedValue({ data: mockPlaylist })
 
       renderResultsPage()
-
-      await waitFor(() => screen.getByRole('button', { name: /Create Spotify Playlist/i }))
       await userEvent.click(screen.getByRole('button', { name: /Create Spotify Playlist \(3 tracks\)/i }))
 
       await waitFor(() =>
@@ -304,8 +262,6 @@ describe('ResultsPage', () => {
       })
 
       renderResultsPage()
-
-      await waitFor(() => screen.getByRole('button', { name: /Create Spotify Playlist \(3 tracks\)/i }))
       await userEvent.click(screen.getByRole('button', { name: /Create Spotify Playlist \(3 tracks\)/i }))
 
       await waitFor(() =>

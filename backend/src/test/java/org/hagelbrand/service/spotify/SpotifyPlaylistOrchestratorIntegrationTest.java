@@ -48,11 +48,11 @@ class SpotifyPlaylistOrchestratorIntegrationTest {
     // ── Helper to build a matched TrackResolution ─────────────────────────────
 
     private static TrackResolution matched(String track, String id, int confidence, String reason) {
-        return new TrackResolution(track, "Green Day", true, id, track, "Green Day", confidence, reason);
+        return new TrackResolution(track, "Green Day", true, id, track, "Green Day", confidence, reason, null);
     }
 
     private static TrackResolution unmatched(String track, int confidence, String reason) {
-        return new TrackResolution(track, "Green Day", false, null, null, null, confidence, reason);
+        return new TrackResolution(track, "Green Day", false, null, null, null, confidence, reason, null);
     }
 
     // ── Tests ─────────────────────────────────────────────────────────────────
@@ -128,7 +128,7 @@ class SpotifyPlaylistOrchestratorIntegrationTest {
         when(userService.getCurrentUserId(spotifyClient)).thenReturn("user-123");
         when(trackResolver.resolve(anyString(), anyString(), isNull()))
                 .thenReturn(new TrackResolution("unknown", "Unknown Artist", false,
-                        null, null, null, 0, "NO_RESULTS"));
+                        null, null, null, 0, "NO_RESULTS", null));
         when(playlistService.createPlaylist(spotifyClient, "user-123", artist))
                 .thenReturn("playlist-456");
 
@@ -171,7 +171,7 @@ class SpotifyPlaylistOrchestratorIntegrationTest {
                 .thenReturn(matched("When I Come Around", "spotify-id-1", 85, "EXACT_TRACK"));
         when(trackResolver.resolve("Green Day", "When I Come Around (Live)", null))
                 .thenReturn(new TrackResolution("When I Come Around (Live)", "Green Day", true,
-                        "spotify-id-2", "When I Come Around (Studio Version)", "Green Day", 40, "PARTIAL_TRACK"));
+                        "spotify-id-2", "When I Come Around (Studio Version)", "Green Day", 40, "PARTIAL_TRACK", null));
         when(trackResolver.resolve("Green Day", "When I Come Around - Remix", null))
                 .thenReturn(unmatched("When I Come Around - Remix", 15, "LOW_CONFIDENCE"));
         when(playlistService.createPlaylist(spotifyClient, "user-123", artist))
@@ -194,7 +194,7 @@ class SpotifyPlaylistOrchestratorIntegrationTest {
         when(userService.getCurrentUserId(spotifyClient)).thenReturn("user-cab");
         when(trackResolver.resolve("The CAB", "...Baby One More Time", "Britney Spears"))
                 .thenReturn(new TrackResolution("...Baby One More Time", "Britney Spears", true,
-                        "spotify-britney-id", "...Baby One More Time", "Britney Spears", 88, "EXACT_TRACK;POPULARITY=9"));
+                        "spotify-britney-id", "...Baby One More Time", "Britney Spears", 88, "EXACT_TRACK;POPULARITY=9", null));
         when(playlistService.createPlaylist(spotifyClient, "user-cab", artist))
                 .thenReturn("playlist-cab");
 
@@ -213,7 +213,7 @@ class SpotifyPlaylistOrchestratorIntegrationTest {
         when(userService.getCurrentUserId(spotifyClient)).thenReturn("user-fab4");
         when(trackResolver.resolve("The Beatles", "Hey Jude", null))
                 .thenReturn(new TrackResolution("Hey Jude", "The Beatles", true,
-                        "spotify-jude", "Hey Jude", "The Beatles", 95, "EXACT_TRACK;POPULARITY=10"));
+                        "spotify-jude", "Hey Jude", "The Beatles", 95, "EXACT_TRACK;POPULARITY=10", null));
         when(playlistService.createPlaylist(spotifyClient, "user-fab4", artist))
                 .thenReturn("playlist-beatles");
 
