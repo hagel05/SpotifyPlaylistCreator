@@ -7,6 +7,17 @@ afterEach(() => {
   cleanup()
 })
 
+// Mock ResizeObserver (not implemented in jsdom, required by Headless UI v2)
+Object.defineProperty(window, 'ResizeObserver', {
+  writable: true,
+  configurable: true,
+  value: vi.fn().mockImplementation(() => ({
+    observe: vi.fn(),
+    unobserve: vi.fn(),
+    disconnect: vi.fn(),
+  })),
+})
+
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

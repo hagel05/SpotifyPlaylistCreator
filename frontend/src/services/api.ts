@@ -30,6 +30,12 @@ export interface TrackCountsResponse {
   trackCounts: TrackCountResponse[]
 }
 
+export interface ArtistSuggestion {
+  id: string
+  name: string
+  imageUrl: string | null
+}
+
 export const spotifyApi = {
   loginUrl: () => `${API_BASE}/../oauth2/authorization/spotify`,
 
@@ -44,6 +50,9 @@ export const spotifyApi = {
     }),
 
   checkAuth: () => apiClient.get('/auth/check'),
+
+  searchArtists: (query: string, signal?: AbortSignal) =>
+    apiClient.get<ArtistSuggestion[]>('/artists/search', { params: { q: query }, signal }),
 }
 
 export default apiClient

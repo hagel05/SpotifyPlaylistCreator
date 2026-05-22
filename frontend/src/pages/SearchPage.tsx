@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Combobox, ComboboxInput, ComboboxOption, ComboboxOptions } from '@headlessui/react'
 import { spotifyApi } from '../services/api'
+import { useArtistSearch } from '../hooks/useArtistSearch'
 
 export function SearchPage() {
   const [artist, setArtist] = useState('')
@@ -8,6 +10,8 @@ export function SearchPage() {
   const [error, setError] = useState<string | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const navigate = useNavigate()
+
+  const { suggestions } = useArtistSearch(artist)
 
   useEffect(() => {
     checkAuthentication()
@@ -89,31 +93,61 @@ export function SearchPage() {
           )}
         </div>
 
-        {isAuthenticated && <form onSubmit={handleSearch} className="space-y-4">
-          <div>
-            <input
-              type="text"
-              value={artist}
-              onChange={(e) => setArtist(e.target.value)}
-              placeholder="Search for an artist..."
-              className="w-full px-4 py-3 rounded-lg bg-green-900 text-white placeholder-green-300 border border-green-700 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500"
-            />
-          </div>
+        {isAuthenticated && (
+          <form onSubmit={handleSearch} className="space-y-4">
+            <Combobox immediate value={artist} onChange={(value) => { if (value !== null) setArtist(value) }}>
+              <div className="relative">
+                <ComboboxInput
+                  className="w-full px-4 py-3 rounded-lg bg-green-900 text-white placeholder-green-300 border border-green-700 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500"
+                  placeholder="Search for an artist..."
+                  displayValue={(v: string) => v}
+                  onChange={(e) => setArtist(e.target.value)}
+                />
+                {suggestions.length > 0 && (
+                  <ComboboxOptions
+                    portal={false}
+                    className="absolute z-10 w-full mt-1 bg-green-900 border border-green-700 rounded-lg overflow-hidden shadow-lg"
+                  >
+                    {suggestions.map((a) => (
+                      <ComboboxOption
+                        key={a.id}
+                        value={a.name}
+                        className={({ focus }) =>
+                          `flex items-center gap-3 px-4 py-2 cursor-pointer ${focus ? 'bg-green-700' : ''}`
+                        }
+                      >
+                        {a.imageUrl ? (
+                          <img
+                            src={a.imageUrl}
+                            alt={a.name}
+                            className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-green-800 flex-shrink-0" />
+                        )}
+                        <span className="text-white text-sm">{a.name}</span>
+                      </ComboboxOption>
+                    ))}
+                  </ComboboxOptions>
+                )}
+              </div>
+            </Combobox>
 
-          {error && (
-            <div className="bg-red-900/50 border border-red-600 rounded-lg p-3 text-red-100 text-sm">
-              {error}
-            </div>
-          )}
+            {error && (
+              <div className="bg-red-900/50 border border-red-600 rounded-lg p-3 text-red-100 text-sm">
+                {error}
+              </div>
+            )}
 
-          <button
-            type="submit"
-            disabled={loading || !artist.trim()}
-            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition duration-200"
-          >
-            {loading ? 'Searching...' : 'Search'}
-          </button>
-        </form>}
+            <button
+              type="submit"
+              disabled={loading || !artist.trim()}
+              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition duration-200"
+            >
+              {loading ? 'Searching...' : 'Search'}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   )
