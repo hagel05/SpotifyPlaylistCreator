@@ -1,10 +1,19 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { PlaylistResponse } from '../services/api'
 
+// Passed through navigation state by ResultsPage after the two-phase create flow
+interface ConfirmedTrack {
+  setlistName: string
+  spotifyName: string | null
+  spotifyArtist: string | null
+  isSwapped: boolean
+}
+
 export function PlaylistPage() {
   const location = useLocation()
   const navigate = useNavigate()
-  const playlist = location.state?.playlist as PlaylistResponse
+  const playlist = location.state?.playlist as PlaylistResponse | undefined
+  const confirmedTracks = location.state?.confirmedTracks as ConfirmedTrack[] | undefined
 
   if (!playlist) {
     return (
@@ -37,7 +46,9 @@ export function PlaylistPage() {
           <p className="text-gray-600 mb-6">{playlist.tracksAdded} tracks added</p>
 
           <div className="mb-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-sm text-gray-600 mb-3">Playlist created: {new Date(playlist.createdAt).toLocaleDateString()}</p>
+            <p className="text-sm text-gray-600 mb-3">
+              Playlist created: {new Date(playlist.createdAt).toLocaleDateString()}
+            </p>
             <a
               href={playlist.playlistUrl}
               target="_blank"
@@ -51,16 +62,40 @@ export function PlaylistPage() {
           <div className="mb-6">
             <h2 className="text-xl font-bold mb-4">Tracks in Playlist</h2>
             <div className="space-y-2">
-              {playlist.topTracks.map((track, index) => (
-                <div key={index} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                  <div className="flex justify-between items-start">
-                    <span className="font-medium text-gray-800">{track.name}</span>
-                    <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded">
-                      {Math.round(track.confidence * 100)}%
-                    </span>
-                  </div>
-                </div>
-              ))}
+
+              {/* ── Two-phase flow: confirmedTracks has Spotify names, artist, swap info ── */}
+              {confirmedTracks
+                ? confirmedTracks.map((track, index) => (
+                    <div key={index} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`font-medium ${track.isSwapped ? 'text-blue-700' : 'text-gray-800'}`}>
+                          {track.spotifyName ?? track.setlistName}
+                        </span>
+                        {track.spotifyArtist && (
+                          <span className={`text-sm ${track.isSwapped ? 'text-blue-500' : 'text-gray-500'}`}>
+                            · {track.spotifyArtist}
+                          </span>
+                        )}
+                        {track.isSwapped && (
+                          <span className="text-xs text-blue-400 ml-1">(swapped)</span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+
+                /* ── Legacy flow: topTracks has name + confidence score ── */
+                : playlist.topTracks?.map((track, index) => (
+                    <div key={index} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                      <div className="flex justify-between items-start">
+                        <span className="font-medium text-gray-800">{track.name}</span>
+                        <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded">
+                          {Math.round(track.confidence * 100)}%
+                        </span>
+                      </div>
+                    </div>
+                  ))
+              }
+
             </div>
           </div>
 
