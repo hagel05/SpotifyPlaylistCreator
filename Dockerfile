@@ -18,7 +18,7 @@ FROM eclipse-temurin:21-jre-alpine
 RUN apk add --no-cache nginx
 
 # Create directories
-RUN mkdir -p /app /etc/nginx/templates
+RUN mkdir -p /app /etc/nginx/templates /etc/nginx/conf.d
 
 # Copy backend JAR
 COPY --from=backend-builder /build/backend/build/libs/*.jar /app/app.jar
