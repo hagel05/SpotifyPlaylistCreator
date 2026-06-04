@@ -28,7 +28,7 @@ COPY --from=frontend-builder /build/dist /usr/share/nginx/html
 COPY frontend/nginx.conf.template /etc/nginx/templates/default.conf.template
 
 # Setup startup script to run both Nginx and Java app
-RUN cat > /start.sh << 'EOF'
+RUN cat > /start.sh << 'EOF' && chmod +x /start.sh
 #!/bin/sh
 set -e
 
@@ -53,7 +53,6 @@ fi
 echo "Starting Java application..."
 exec java $JAVA_OPTS -jar /app/app.jar
 EOF
-chmod +x /start.sh
 
 EXPOSE 30075 30055
 ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
