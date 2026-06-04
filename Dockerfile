@@ -15,7 +15,7 @@ RUN npm run build
 
 # Stage 3: Runtime (Java + Nginx)
 FROM eclipse-temurin:21-jre-alpine
-RUN apk add --no-cache nginx
+RUN apk add --no-cache nginx gettext
 
 # Create directories
 RUN mkdir -p /app /etc/nginx/templates
@@ -28,14 +28,32 @@ COPY --from=frontend-builder /build/dist /usr/share/nginx/html
 COPY frontend/nginx.conf.template /etc/nginx/templates/default.conf.template
 
 # Setup startup script to run both Nginx and Java app
-RUN echo '#!/bin/sh' > /start.sh && \
-    echo 'set -e' >> /start.sh && \
-    echo 'echo "Starting Nginx..."' >> /start.sh && \
-    echo 'nginx -g "daemon off;" &' >> /start.sh && \
-    echo 'NGINX_PID=$!' >> /start.sh && \
-    echo 'echo "Starting Java application..."' >> /start.sh && \
-    echo 'exec java $JAVA_OPTS -jar /app/app.jar' >> /start.sh && \
-    chmod +x /start.sh
+RUN cat > /start.sh << 'EOF'
+#!/bin/sh
+set -e
+
+echo "Substituting Nginx template variables..."
+# Manually process the nginx template with environment variable substitution
+envsubst < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
+
+echo "Starting Nginx..."
+nginx -t
+nginx -g "daemon off;" &
+NGINX_PID=$!
+echo "Nginx started with PID $NGINX_PID"
+sleep 2
+
+# Check if nginx is still running
+if ! kill -0 $NGINX_PID 2>/dev/null; then
+  echo "ERROR: Nginx failed to start"
+  cat /var/log/nginx/error.log
+  exit 1
+fi
+
+echo "Starting Java application..."
+exec java $JAVA_OPTS -jar /app/app.jar
+EOF
+chmod +x /start.sh
 
 EXPOSE 30075 30055
 ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
