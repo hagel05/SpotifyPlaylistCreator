@@ -18,7 +18,7 @@ FROM eclipse-temurin:21-jre-alpine
 RUN apk add --no-cache nginx gettext
 
 # Create directories
-RUN mkdir -p /app /etc/nginx/conf.d
+RUN mkdir -p /app /etc/nginx/http.d
 
 # Copy backend JAR
 COPY --from=backend-builder /build/backend/build/libs/*.jar /app/app.jar
@@ -27,7 +27,7 @@ COPY --from=backend-builder /build/backend/build/libs/*.jar /app/app.jar
 COPY --from=frontend-builder /build/dist /usr/share/nginx/html
 
 # Copy nginx template (will be processed at startup with actual FRONTEND_PORT value)
-COPY frontend/nginx.conf.template /etc/nginx/conf.d/default.conf.template
+COPY frontend/nginx.conf.template /etc/nginx/http.d/default.conf.template
 
 # Create startup script
 RUN cat > /start.sh << 'START_SCRIPT' && chmod +x /start.sh
@@ -35,7 +35,12 @@ RUN cat > /start.sh << 'START_SCRIPT' && chmod +x /start.sh
 set -e
 
 echo "Generating Nginx config with FRONTEND_PORT=${FRONTEND_PORT}..."
-sed "s/\${FRONTEND_PORT}/${FRONTEND_PORT}/g" /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf
+# Remove Alpine's default server config and substitute all template variables
+rm -f /etc/nginx/http.d/default.conf
+sed -e "s/\${FRONTEND_PORT}/${FRONTEND_PORT}/g" \
+    -e "s/\${BACKEND_HOST}/localhost/g" \
+    -e "s/\${BACKEND_PORT}/30075/g" \
+    /etc/nginx/http.d/default.conf.template > /etc/nginx/http.d/default.conf
 
 echo "Validating Nginx config..."
 nginx -t
