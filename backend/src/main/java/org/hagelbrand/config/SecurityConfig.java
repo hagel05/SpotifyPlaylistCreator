@@ -22,7 +22,10 @@ public class SecurityConfig {
                 )
                 .oauth2Login(withDefaults())
                 .oauth2Client(withDefaults())
-                .logout(logout -> logout.logoutSuccessUrl("/").permitAll());
+                .logout(logout -> logout
+                        .logoutSuccessUrl("/")
+                        .permitAll()
+                );
         return http.build();
     }
 }

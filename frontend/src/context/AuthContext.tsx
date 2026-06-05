@@ -37,8 +37,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const logout = () => {
+  const logout = async () => {
     setUser(null)
+    await fetch('/logout', { method: 'POST' })
+    window.location.href = '/'
   }
 
   return (
