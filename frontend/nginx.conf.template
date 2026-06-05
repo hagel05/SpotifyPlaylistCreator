@@ -40,6 +40,15 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
+    # Spring Security logout
+    location /logout {
+        proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     # React SPA — serve static files with fallback to index.html
     location / {
         try_files $uri $uri/ /index.html;
