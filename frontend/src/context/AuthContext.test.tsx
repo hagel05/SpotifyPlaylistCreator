@@ -18,10 +18,12 @@ import { AuthProvider, useAuth } from './AuthContext'
 describe('AuthContext', () => {
   beforeEach(() => {
     mockCheckAuth.mockClear()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }))
   })
 
   afterEach(() => {
     vi.clearAllMocks()
+    vi.unstubAllGlobals()
   })
 
   describe('AuthProvider', () => {
