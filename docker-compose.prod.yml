@@ -11,12 +11,37 @@ services:
       SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI}
       SERVER_PORT: 30075
       JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/cpb
+      SPRING_DATASOURCE_USERNAME: cpb_user
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
     ports:
       - "${FRONTEND_PORT:-30055}:30055"
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:30075/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: cpb-postgres
+    environment:
+      POSTGRES_DB: cpb
+      POSTGRES_USER: cpb_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cpb_user -d cpb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
